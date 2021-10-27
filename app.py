@@ -153,18 +153,25 @@ except URLError as e:
 # =============================================================================
 # Is there a correlation between the mean income of a state and the number of cases?
 # =============================================================================
-st.markdown('### Mean Income vs States')
+st.markdown('''
+### Mean Income vs States
+This is a very miscellaneous question, is Covid related to the average income of a state? Are wealthier areas less affected by Covid? Each point on the graph is a state. The larger the bubble is, the more populated the state is.
+''')
+
+
 # merge supplementary income dataset with the cases dataset on state
 cases_income = pd.DataFrame(cases_state.groupby('state')['cases_new'].sum()).reset_index()
 cases_income = cases_income.merge(income, on='state')
+cases_income = cases_income.merge(population, on='state')
 cases_income['income'] = cases_income['income'].astype(int)
 
-plot = px.scatter(cases_income, x='cases_new', y='income', color='cases_new', size='cases_new', labels={'cases_new':'Cases', 'income': 'Income'})
+plot = px.scatter(cases_income, x='income', y='cases_new', color='cases_new', size='pop', labels={'cases_new':'Total Cases in State', 'income': 'Average Income of State'})
 
-# add plotly to streamlit
 st.plotly_chart(plot)
 
-
+st.markdown('''
+There appears to be a weak correlation, hinting that Covid cases may not be a totally socio-economic one. As the average income of the state increases, the more populated it generally is, which would mean more cases. The population is a strong **confounding variable**.
+''')
 # =============================================================================
 # Is there any correlation between vaccination and daily cases for Selangor, Sabah, Sarawak, and many more?
 # =============================================================================
@@ -243,9 +250,12 @@ We can see from the boxplot that the majority of Covid Clusters are small, while
 clusters_singlestate = remove_outliers(clusters_singlestate, 'cases_total')
 st.plotly_chart(px.box(clusters_singlestate, x='single_state', y='cases_total', points=False))
 
-st.markdown('### What type of Covid-19 clusters are most prevalent?')
+st.markdown(''''
+### What type of Covid-19 clusters are most prevalent?
+Across the country, clusters form in schools, workplaces, places of worship, etc. But the question is which ones are most drastic?
+''')
 
-st.plotly_chart(px.box(clusters_singlestate, x='category', y='cases_total', points=False))
+st.plotly_chart(px.box(clusters_singlestate, x='category', y='cases_total'))
 st.markdown('''
 The detention centers generally have the largest Covid clusters, with a strong right skew. The rest of the cluster categories have mostly small clusters, but quite a few unusually large clusters. This is especially for the workplace clusters. For instance, most companies/organisations in Malaysia are small, so there may be a lot of clusters, but only some are large enought to appear as an outlier.
 ''')
@@ -366,13 +376,14 @@ fig.add_trace(go.Line(x=vax_malaysia_all_attributes['date'], y=vax_malaysia_all_
 fig.add_trace(go.Line(x=vax_malaysia_all_attributes['date'], y=vax_malaysia_all_attributes['sinovac'], name='Sinovac', mode='lines'), secondary_y=False)
 fig.add_trace(go.Line(x=vax_malaysia_all_attributes['date'], y=vax_malaysia_all_attributes['astra'], name='Astrazeneca', mode='lines'), secondary_y=False)
 fig.add_trace(go.Line(x=vax_malaysia_all_attributes['date'], y=vax_malaysia_all_attributes['cansino'], name='Cansino', mode='lines'), secondary_y=False)
+fig.update_layout(title='Vaccine brand usage over time')
 st.plotly_chart(fig)
 
 vaccine_totals = pd.DataFrame(vax_malaysia_all_attributes[['pfizer', 'astra', 'sinovac']].sum().reset_index())
 vaccine_totals.columns = ['vaccine', 'total']
 
 # plotly pie chart
-vaccines_pie = px.pie(vaccine_totals, values='total', names='vaccine', title='Vaccine Distribution')
+vaccines_pie = px.pie(vaccine_totals, values='total', names='vaccine', title='Vaccine distribution')
 st.plotly_chart(vaccines_pie)
 
 st.write('''
