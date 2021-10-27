@@ -8,7 +8,8 @@ from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn import preprocessing
-
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
 from urllib.error import URLError
 
 state_locations = []
@@ -119,19 +120,21 @@ try:
     ALL_LAYERS = {
         "Covid Cases": pdk.Layer(
             "HexagonLayer",
-            data=cases_state_locations.to_json(),
-            get_position='[lon, lat]',
+            data=cases_state_locations.to_json(orient='records'),
+            pickable=True,
+            extruded=True,
+            get_position=["lon", "lat"],
             get_text="state",
-            get_radius="[cases_new]",
+            # get_radius="[cases_new]",
             elevation_scale=10,
             # elevation_range=[0, 1000],
-            extruded=True,
         )
     }
     st.sidebar.markdown('### Map Layers')
     selected_layers = [
         layer for layer_name, layer in ALL_LAYERS.items()
         if st.sidebar.checkbox(layer_name, True)]
+    print(selected_layers)
     if selected_layers:
         st.pydeck_chart(pdk.Deck(
             map_style="mapbox://styles/mapbox/light-v9",
@@ -154,7 +157,7 @@ except URLError as e:
 # Is there a correlation between the mean income of a state and the number of cases?
 # =============================================================================
 st.markdown('''
-### Mean Income vs States
+### Mean Income vs States (with population)
 This is a very miscellaneous question, is Covid related to the average income of a state? Are wealthier areas less affected by Covid? Each point on the graph is a state. The larger the bubble is, the more populated the state is.
 ''')
 
@@ -389,3 +392,167 @@ st.plotly_chart(vaccines_pie)
 st.write('''
 Pfizer is the most used vaccine in Malaysia, followed by Sinovac and then Astrazeneca. If you observe the usage of Astrazeneca, it flails in comparison to the other two because it was opened up for voluntary registrations. Furthermore, unlike Pfizer and Sinovac, Astrazeneca usage does not show an upward trend and only has a few spikes, which may be attributed to the government opening up registrations.
 ''')
+
+# ====================================================================
+# CLUSTERING
+# ====================================================================
+st.markdown('''
+## Clustering
+In this section, we will employ different clustering algorithms to see whether
+states suffering from Covid-19 form any visible patterns. 🦠
+''')
+
+st.markdown('''
+### How did the clusters change over time with respect to cases and deaths? Did some states reorganise into new clusters?
+''')
+states = ['Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang', 'Perak', 'Perlis', 'Pulau Pinang', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu', 'W.P. Kuala Lumpur', 'W.P. Labuan', 'W.P. Putrajaya']
+dates = ['2020-02-01', '2020-03-01', '2020-04-01', '2020-05-01', '2020-06-01', '2020-07-01', '2020-08-01', '2020-09-01', '2020-10-01', '2020-11-01', '2020-12-01', '2021-01-01', '2021-02-01', '2021-03-01', '2021-04-01', '2021-05-01', '2021-06-01', '2021-07-01', '2021-08-01']
+ranges_1 = [(dates[i], dates[i+1]) for i in range(len(dates)-1)]
+
+date_range_2d = st.select_slider('Slide to see the clusters moving through time using temporal K-Means clustering.', options=ranges_1, key='2d')
+
+cases_state_date = cases_state[(cases_state['date'] >= date_range_2d[0]) & (cases_state['date'] < date_range_2d[1])]
+deaths_state_date = deaths_state[(deaths_state['date'] >= date_range_2d[0]) & (deaths_state['date'] < date_range_2d[1])]
+
+cases = []
+vaccinations = []
+deaths = []
+
+for state in states:
+    cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
+    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum())
+
+cases_deaths_vaccinations = pd.DataFrame({"state": states, "cases": cases, "deaths": deaths})
+for col in cases_deaths_vaccinations:
+    if cases_deaths_vaccinations[col].dtype != 'object':
+        cases_deaths_vaccinations[col] = StandardScaler().fit_transform(cases_deaths_vaccinations[[col]])
+
+cases_deaths_vaccinations.drop(columns=['state'], inplace=True)
+X_std = cases_deaths_vaccinations
+
+km = KMeans(n_clusters=3, max_iter=100)
+y_clusters = km.fit_predict(cases_deaths_vaccinations)
+cases_deaths_vaccinations['cluster'] = y_clusters
+centroids = km.cluster_centers_
+
+twodimensionalclusters = px.scatter(cases_deaths_vaccinations, x="cases", y="deaths", color="cluster")
+st.plotly_chart(twodimensionalclusters)
+
+st.markdown('''
+We can observe that in the beginning, the majority of the clusters were positioned towards the bottom left and they maintain a similar pattern until about August 2020. In August, the cases were still high but there were fewer deaths, which may signify that the situation was improving, besides the one state that is in the upper corner of the plot that stands out from the rest. Around December, the bottom-right cluster begins to break up and states start moving diagonally upwards in the graph, meaning higher number of deaths and more cases. By September 2021, the states fall in a sort of straight diagonal line, with the performance of states spread across the spectrum from mild to serious.
+**We also set out to find that one state that created a cluster of it's own throughout and it was Selangor, to no one's surprise.**
+''')
+
+
+st.markdown('''
+### How do clusters change over time with respect to cases, deaths and vaccinations? Did some states reorganise into different clusters?
+
+This time, let's bring in a third variable- vaccinations.
+''')
+
+nrows = 5
+ncols = 4
+dates = ['2020-02-01', '2020-03-01', '2020-04-01', '2020-05-01', '2020-06-01', '2020-07-01', '2020-08-01', '2020-09-01', '2020-10-01', '2020-11-01', '2020-12-01', '2021-01-01', '2021-02-01', '2021-03-01', '2021-04-01', '2021-05-01', '2021-06-01', '2021-07-01', '2021-08-01']
+ranges_2 = [(dates[i], dates[i+1]) for i in range(len(dates)-1)]
+
+date_range = st.select_slider('Slide to see the clusters moving through time using temporal K-Means clustering.', options=ranges_2, key='3d')
+
+cases_state_date = cases_state[(cases_state['date'] >= date_range[0]) & (cases_state['date'] < date_range[1])]
+deaths_state_date = deaths_state[(deaths_state['date'] >= date_range[0]) & (deaths_state['date'] < date_range[1])]
+vax_state_date = vax_state[(vax_state['date'] >= date_range[0]) & (vax_state['date'] < date_range[1])]
+
+cases = []
+vaccinations = []
+deaths = []
+
+states = ['Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang', 'Perak', 'Perlis', 'Pulau Pinang', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu', 'W.P. Kuala Lumpur', 'W.P. Labuan', 'W.P. Putrajaya']
+
+for state in states:
+    cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
+    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum())
+    vaccinations.append(vax_state_date[vax_state_date['state'] == state]['daily_full'].sum())
+
+cases_deaths_vaccinations = pd.DataFrame({"state": states, "cases": cases, "deaths": deaths, "vaccinations": vaccinations})
+for col in cases_deaths_vaccinations:
+    if cases_deaths_vaccinations[col].dtype != 'object':
+        cases_deaths_vaccinations[col] = StandardScaler().fit_transform(cases_deaths_vaccinations[[col]])
+
+cases_deaths_vaccinations.drop(columns=['state'], inplace=True)
+X_std = cases_deaths_vaccinations
+
+km = KMeans(n_clusters=3, max_iter=100)
+y_clusters = km.fit_predict(cases_deaths_vaccinations)
+cases_deaths_vaccinations['cluster'] = y_clusters
+centroids = km.cluster_centers_
+
+threedimensionalclusters = px.scatter_3d(cases_deaths_vaccinations, x="cases", y="deaths", z="vaccinations", color="cluster")
+st.plotly_chart(threedimensionalclusters)
+
+st.markdown('''
+We maintain that states can be grouped into 3 clusters. Throughout 2020, vaccinations are 0 and hence, the clusters slowly start to expand in terms of cases and deaths. By 2021, the states have spread reasonably wide throughout the 3 dimensions. By early 2021, cases and deaths are at an all time high. Around this time, vaccination begins and clusters start moving higher in that dimension. However, even in September, there is one cluster of states with relatively low vaccinations.
+''')
+
+st.markdown('''
+### Which states require attention in terms of their vaccination campaign and deaths (relatively)?
+''')
+
+dates = ['2021-01-01', '2021-02-01', '2021-03-01', '2021-04-01', '2021-05-01', '2021-06-01', '2021-07-01', '2021-08-01']
+ranges_3 = [(dates[i], dates[i+1]) for i in range(len(dates)-1)]
+date_range = st.select_slider('Slide to see the clusters moving through time using temporal K-Means clustering.', options=ranges_3, key='vaccination_and_deaths')
+
+cases_state_date = cases_state[(cases_state['date'] >= date_range[0]) & (cases_state['date'] < date_range[1])]
+deaths_state_date = deaths_state[(deaths_state['date'] >= date_range[0]) & (deaths_state['date'] < date_range[1])]
+vax_state_date = vax_state[(vax_state['date'] >= date_range[0]) & (vax_state['date'] < date_range[1])]
+
+cases = []
+vaccination_rates = []
+deaths = []
+
+for state in states:
+    cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
+    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum() / population.loc[population['state'] == state, 'pop'].values[0])
+    # divide number of vaccinations by state population
+    vaccination_rates.append(vax_state_date[vax_state_date['state'] == state]['daily_full'].sum() / population.loc[population['state'] == state, 'pop'].values[0])
+
+cases_deaths_vaccinations = pd.DataFrame({"state": states, "deaths": deaths, "vaccination_rate": vaccination_rates})
+    # for col in cases_deaths_vaccinations:
+    #     if cases_deaths_vaccinations[col].dtype != 'object':
+    #         cases_deaths_vaccinations[col] = StandardScaler().fit_transform(cases_deaths_vaccinations[[col]])
+
+cases_deaths_vaccinations.drop(columns=['state'], inplace=True)
+X_std = cases_deaths_vaccinations
+
+km = KMeans(n_clusters=3, max_iter=100)
+y_clusters = km.fit_predict(cases_deaths_vaccinations)
+centroids = km.cluster_centers_
+
+# put back state column
+cases_deaths_vaccinations['state'] = states
+cases_deaths_vaccinations['cluster'] = y_clusters
+vaccination_deaths = px.scatter(cases_deaths_vaccinations, x="vaccination_rate", y="deaths", color="cluster", labels={"vaccination_rate": "Vaccination Rate", "deaths": "Death Rate"})
+
+st.plotly_chart(vaccination_deaths)
+
+st.markdown('''
+We can see that throughout 2020, there are 0 vaccinations in all state since the vaccination campaign was yet to start. By February 2021, two states have begun their vaccination campaigns. It speeds up more rapidly by March and April, the vertical clusters start to spread out on the x-axis indicating higher vaccination numbers. In June 2021, there was a remarkable shoot where the y-axis scale completely changed. As of September 2021, the states that may require attention are those with low vaccination rates and high deaths, namely cluster 2, which contains the following states:
+
+* Melaka
+* Negeri Sembilan
+* Perlis
+* Selangor
+* W.P. Putrajaya
+
+On the other hand, these are the states with relatively high vaccination rates w.r.t deaths:
+* Sarawak
+* W.P. Kuala Lumpur
+* W.P. Labuan
+''')
+    # row, col, num = grid_combos[i]
+
+    # ax = fig.add_subplot(row, col, num)
+    # ax.scatter(cases_deaths_vaccinations['vaccination_rate'], cases_deaths_vaccinations['deaths'], c=y_clusters, cmap='viridis')
+    # ax.set_xlabel('Vaccination Rate')
+    # ax.set_ylabel('Death Rate')
+    # # ax.set_xticks(np.arange(-0.5, 0.5, 0.1))
+    # # ax.set_yticks(np.arange(-0.05, 3.5, 0.5))
+    # ax.set_title(f"{date_range[0]} - {date_range[1]}")
