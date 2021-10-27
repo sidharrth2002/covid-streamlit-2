@@ -4,6 +4,9 @@ import pandas as pd
 import pydeck as pdk
 import plotly.express as px
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn import preprocessing
 
 from urllib.error import URLError
 
@@ -29,6 +32,10 @@ vaxreg_state = pd.read_csv('./vaccination/registration/vaxreg_state.csv')
 population = pd.read_csv('./vaccination/static/population.csv')
 checkins = pd.read_csv('./cases/mysejahtera/checkin_malaysia.csv')
 income = pd.read_csv('./vaccination/static/income.csv')
+global_datasets =  pd.read_csv('./global_datasets/owid-covid-data.csv')
+trace_malaysia = pd.read_csv('./cases/mysejahtera/trace_malaysia.csv')
+trace_malaysia.fillna(0,inplace=True)
+trace_malaysia.drop_duplicates(inplace=True)
 
 # cluster columns are irrelevant, remove them
 cases_malaysia.drop(columns=['cluster_import', 'cluster_religious', 'cluster_community', 'cluster_highRisk', 'cluster_education', 'cluster_detentionCentre', 'cluster_workplace'], inplace=True)
@@ -53,6 +60,7 @@ tests_malaysia.drop_duplicates(inplace=True)
 tests_malaysia['total_testing'] = tests_malaysia['rtk-ag'] + tests_malaysia['pcr']
 tests_malaysia.drop(columns=['rtk-ag', 'pcr'], inplace=True)
 vax_malaysia.drop_duplicates(inplace=True)
+vax_malaysia['cumul_vaccine'] = vax_malaysia['daily_full'].cumsum()
 vax_malaysia_all_attributes = vax_malaysia.copy()
 # total up first and second dose
 vax_malaysia_all_attributes['pfizer'] = vax_malaysia_all_attributes['pfizer1'] + vax_malaysia_all_attributes['pfizer2']
@@ -68,12 +76,26 @@ vaxreg_state.drop(columns=['phase2', 'mysj','call','web','children','elderly','c
 population.drop(columns=['pop_18', 'pop_60'], inplace=True)
 income = income[income['Year'] == 2020]
 income.rename(columns={'Country/State': 'state', 'Mean Monthly Household Gross Income': 'income', 'Year': 'year'}, inplace=True)
-
-
+global_datasets.fillna(0, inplace=True)
+global_datasets.drop_duplicates(inplace=True)
+global_datasets.drop(columns=['iso_code', 'continent','new_cases_smoothed','new_deaths_smoothed','new_cases_smoothed_per_million',
+                              'new_deaths_smoothed_per_million','reproduction_rate','icu_patients','icu_patients_per_million','hosp_patients',
+                              'hosp_patients_per_million','weekly_icu_admissions','weekly_icu_admissions_per_million','weekly_hosp_admissions',
+                              'weekly_hosp_admissions_per_million','new_tests_smoothed','total_boosters','new_vaccinations_smoothed',
+                              'total_boosters_per_hundred','new_vaccinations_smoothed_per_million','stringency_index','median_age',
+                              'aged_65_older','aged_70_older','gdp_per_capita','extreme_poverty','cardiovasc_death_rate','diabetes_prevalence',
+                              'female_smokers','male_smokers','handwashing_facilities','hospital_beds_per_thousand','life_expectancy','human_development_index',
+                              'excess_mortality_cumulative_absolute','excess_mortality_cumulative','excess_mortality','excess_mortality_cumulative_per_million',
+                             ], inplace=True)
 # TITLE
 st.title("A Comprehensive Exploration of Covid-19 in Malaysia 🇲🇾")
+st.subheader("Sidharrth Nagappan, Eugene Kan, Tan Zhi Hang")
+st.image('./covid-malaysia.jpeg')
 
 # DISPLAY MAP WITH CASES AND DEATHS
+st.markdown('''
+## Spatially Mapped Covid-19 data
+''')
 with open("./states_lat_lon.txt", "r") as f:
     text = f.read()
     for line in text.split("\n"):
@@ -205,6 +227,134 @@ st.plotly_chart(px.box(clusters_singlestate, x='single_state', y='cases_total', 
 st.markdown('### What type of Covid-19 clusters are most prevalent?')
 
 st.plotly_chart(px.box(clusters_singlestate, x='category', y='cases_total', points=False))
-st.markdown(''''
+st.markdown('''
 The detention centers generally have the largest Covid clusters, with a strong right skew. The rest of the cluster categories have mostly small clusters, but quite a few unusually large clusters. This is especially for the workplace clusters. For instance, most companies/organisations in Malaysia are small, so there may be a lot of clusters, but only some are large enought to appear as an outlier.
 ''')
+
+# =============================================================================
+# How well is Malaysia's vaccination campaign doing compared to other countries in South-East Asia?
+# =============================================================================
+
+st.markdown('''
+### How well is Malaysia's vaccination campaign doing compared to other countries in South-East Asia?
+''')
+def getCountry(country) :
+    filter = global_datasets['location'] == country
+    df = global_datasets[filter]
+    df = df[['date','population','people_fully_vaccinated']]
+    df['cumul'] = df['people_fully_vaccinated'].cumsum()
+    df['percentage_vaccinated'] = df['cumul'] / df['population']
+    filter2 = df['date'] > '2021-04'
+    df = df[filter2]
+    return df
+Brunei = getCountry('Brunei')
+Myanmar = getCountry('Myanmar')
+Cambodia = getCountry('Cambodia')
+Indonesia = getCountry('Indonesia')
+Laos = getCountry('Laos')
+Malaysia = getCountry('Malaysia')
+Philippines = getCountry('Philippines')
+Singapore = getCountry('Singapore')
+Thailand = getCountry('Thailand')
+Vietnam = getCountry('Vietnam')
+
+# stupid plotly cannot do multiple lines in one plot, so use seaborn
+fig, ax = plt.subplots(figsize=(25, 10))
+ax.plot(Brunei['date'], Brunei['percentage_vaccinated'], label = "Brunei")
+ax.plot(Myanmar['date'], Myanmar['percentage_vaccinated'], label = "Myanmar")
+ax.plot(Cambodia['date'], Cambodia['percentage_vaccinated'], label = "Cambodia")
+ax.plot(Indonesia['date'], Indonesia['percentage_vaccinated'], label = "Indonesia")
+ax.plot(Laos['date'], Laos['percentage_vaccinated'], label = "Laos")
+ax.plot(Malaysia['date'], Malaysia['percentage_vaccinated'], label = "Malaysia")
+ax.plot(Philippines['date'], Philippines['percentage_vaccinated'], label = "Philippines")
+ax.plot(Singapore['date'], Singapore['percentage_vaccinated'], label = "Singapore")
+ax.plot(Thailand['date'], Thailand['percentage_vaccinated'], label = "Thailand")
+ax.plot(Vietnam['date'], Vietnam['percentage_vaccinated'], label = "Vietnam")
+ax.set_xticks(ax.get_xticks()[::10])
+ax.tick_params(axis='x', labelrotation=90)
+plt.legend()
+st.pyplot(fig)
+
+st.markdown('''
+The line graph above shows that the vaccination rate for each country in South-East Asia. Based on the result, we can see that Cambodia has the highest vaccinated rate compared to other countries and Myanmar have the lowest vaccinated rate which is near zero. For Malaysia, we ranked top 3 in the graph and the vaccinated rate is near 45%. Hence, we can conclude that Malaysia's vaccination campaign is doing better than the majority of South-East Asia's countries.
+'''
+)
+
+st.markdown('''
+### Is there a link between casual contacts and the number of daily cases? Can we classify how contagious Covid is?
+''')
+temp_cases_malaysia = cases_malaysia.copy()
+temp_trace_malaysia = trace_malaysia.copy()
+merged = temp_cases_malaysia.merge(temp_trace_malaysia, on='date')
+corr = merged[['casual_contacts', 'cases_new']].corr()
+st.plotly_chart(px.scatter(merged, x='casual_contacts', y='cases_new', trendline='ols'))
+st.markdown('''
+    We can see that case_new is highly correlated with casual_contacts so I mean that there is a link between the cases_new and casual_contact. If more people go out and get infected, the number of cases will increase.
+''')
+
+st.markdown('''
+### How has the vaccination rate changed over time across states?
+We first obtain a new dataframe which only contains the date and the cummulative vaccination head count then we examine their correlation and visualize it using heatmap.
+''')
+corr_vaccine = vax_malaysia[['date', 'cumul_vaccine']].copy()
+malaysia_cases = cases_state[['date','state','cases_new']]
+filtered_my_cases = malaysia_cases.groupby('date').sum().reset_index()
+
+states = ['Melaka','Negeri Sembilan','Perlis','Selangor','W.P. Putrajaya']
+
+vax_state = vax_state[['date','state','daily_full']]
+merged_vax_state = pd.merge(vax_state, malaysia_cases, on=['date','state'])
+scaler = preprocessing.MinMaxScaler()
+names = ['cases_new','daily_full']
+d = scaler.fit_transform(merged_vax_state[['cases_new','daily_full']])
+scaled_df = pd.DataFrame(d, columns=names)
+scaled_df['date'] = pd.to_datetime(merged_vax_state['date'])
+scaled_df['state'] = merged_vax_state['state']
+
+fig, axes = plt.subplots(3, 2, figsize=(20,20))
+
+#scaled_df[scaled_df['state']==i]['date'],
+for index, i in enumerate(states):
+    ax = fig.add_subplot(3, 2, index + 1)
+    ax.plot(scaled_df[scaled_df['state']==i]['date'],scaled_df[scaled_df['state']==i]['daily_full'],label = "Vaccination Rate (%)")
+    ax.plot(scaled_df[scaled_df['state']==i]['date'],scaled_df[scaled_df['state']==i]['cases_new'],label = "Daily New Cases")
+    plt.xticks(rotation=90)
+    plt.title(i + ' Vaccination Rate and Daily Cases')
+    plt.xlabel('Date')
+    plt.ylabel('Normalized quantity')
+    leg = plt.legend(loc='upper left')
+
+st.pyplot(fig)
+st.markdown('''
+We first normalize both the vaccination rate(%) and the daily new cases of covid cases to see if there's any effect of vaccination. We specifically look at the top 5 states that require more attention( Melaka, Negeri Sembilan, Perlis, Selangor and W.P. Putrajaya) that we found out that have low vaccination rate in the earlier finding. As we can see from the line graph that we plot out, it is clear that when the government put more effort into getting the people vaccinated in that certain state, the daily cases would start to decline, except for Perlis. Perlis's daily cases spikes up a little in October 2021 but not drastically. We can safely assume that vaccination actually in a way help controlling the cluster cases in Perlis without going higher. Regardless, we can conclude that vaccination might be one of the contributing factor to reduce daily covid cases in Malaysia. However, more research is needed in order to conclude this finding.
+''')
+
+st.markdown('''
+### How has the vaccination rate changed across the nation?
+''')
+vax_pop_percentage = vax_malaysia['cumul_vaccine']
+vax_pop_percentage = pd.DataFrame(vax_pop_percentage)
+vax_pop_percentage['percentage'] = vax_pop_percentage.apply(lambda x: (vax_malaysia['cumul_vaccine']/population[population['state']=='Malaysia']['pop'].item())*100,axis=0)
+vax_pop_percentage['date'] = pd.to_datetime(vax_malaysia['date'])
+
+st.plotly_chart(px.line(vax_pop_percentage, x='date', y='percentage', labels={'date':'Date', 'percentage':'Vaccination Rate (%)'}))
+
+st.markdown('''
+### Vaccine Distribution Modelling
+''')
+
+fig = plt.figure(figsize=(15, 10))
+sns.lineplot(x='date', y='pfizer', data=vax_malaysia_all_attributes)
+sns.lineplot(x='date', y='sinovac', data=vax_malaysia_all_attributes)
+sns.lineplot(x='date', y='astra', data=vax_malaysia_all_attributes)
+sns.lineplot(x='date', y='cansino', data=vax_malaysia_all_attributes)
+# only show some xtick labels
+plt.xticks([date for i, date in enumerate(vax_malaysia_all_attributes['date']) if i % 10 == 0], rotation=45)
+plt.legend(['Pfizer', 'Sinovac', 'Astra', 'Cansino'])
+st.pyplot(fig)
+vaccine_totals = pd.DataFrame(vax_malaysia_all_attributes[['pfizer', 'astra', 'sinovac']].sum().reset_index())
+vaccine_totals.columns = ['vaccine', 'total']
+
+# plotly pie chart
+vaccines_pie = px.pie(vaccine_totals, values='total', names='vaccine', title='Vaccine Distribution')
+st.plotly_chart(vaccines_pie)
