@@ -4,6 +4,7 @@ import pandas as pd
 import pydeck as pdk
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn import preprocessing
@@ -152,14 +153,13 @@ except URLError as e:
 # =============================================================================
 # Is there a correlation between the mean income of a state and the number of cases?
 # =============================================================================
-st.markdown('### Correlation between mean income and cases')
+st.markdown('### Mean Income vs States')
 # merge supplementary income dataset with the cases dataset on state
 cases_income = pd.DataFrame(cases_state.groupby('state')['cases_new'].sum()).reset_index()
-st.write(income)
 cases_income = cases_income.merge(income, on='state')
 cases_income['income'] = cases_income['income'].astype(int)
 
-plot = px.scatter(cases_income, x='cases_new', y='income', color='cases_new', size='cases_new', labels={'cases_new':'Cases', 'income': 'Income'}, title='Correlation plot between mean income and cases')
+plot = px.scatter(cases_income, x='cases_new', y='income', color='cases_new', size='cases_new', labels={'cases_new':'Cases', 'income': 'Income'})
 
 # add plotly to streamlit
 st.plotly_chart(plot)
@@ -169,7 +169,10 @@ st.plotly_chart(plot)
 # Is there any correlation between vaccination and daily cases for Selangor, Sabah, Sarawak, and many more?
 # =============================================================================
 # prepare a generic function that calculates the cumulative sum of cases and percentage vaccinated for each state
-st.markdown('### Correlation between vaccination and cases')
+st.markdown(''''
+### Vaccination vs Daily Cases
+We first did correlation with all the values for each state, but soon realised that the initial 10% would stall the trend. Therefore, we calculate a correlation by first removing the first 10% of the vaccination campaign. Now, we can really start to see the effect of vaccination.
+''')
 def cases_vax_corr(state, mode = 1):
     vax_state_temp = vax_state.copy()
     vax_state_temp = vax_state_temp[vax_state_temp['state'] == state]
@@ -184,14 +187,30 @@ def cases_vax_corr(state, mode = 1):
     state_vax = vax_state[vax_state['state'] == state]
     state_merged = state_cases.merge(state_vax, on='date')
     corr = state_merged[['daily', 'cases_new']].corr()
-
     return corr,vax_state_temp
+
 corr_selangor1,vax_percentage_selangor1 = cases_vax_corr('Selangor',1)
+corr_selangor2,vax_percentage_selangor2 = cases_vax_corr('Selangor',2)
+corr_sabah1,vax_percentage_sabah1 = cases_vax_corr('Sabah',1)
 corr_sabah2,vax_percentage_sabah2 = cases_vax_corr('Sabah',2)
 corr_sarawak1,vax_percentage_sarawak1= cases_vax_corr('Sarawak',1)
 corr_sarawak2,vax_percentage_sarawak2= cases_vax_corr('Sarawak',2)
 
-st.plotly_chart(px.imshow(corr_selangor1))
+table = {'Full Period':[corr_selangor1['daily']['cases_new'], corr_sabah1['daily']['cases_new'], corr_sarawak1['daily']['cases_new']],
+        'When Vacinated Rate Over 0.1':[corr_selangor2['daily']['cases_new'], corr_sabah2['daily']['cases_new'], corr_sarawak2['daily']['cases_new']]}
+
+# Creates pandas DataFrame.
+table = pd.DataFrame(table, index =['Selangor','Sabah','Sarawak'])
+st.dataframe(table)
+st.write('''
+Based on the table, we can see that for the full period columns, Selangor and Sabah have a very high positive correlation between daily fully vaccinated and daily new cases. However, Sarawak correlation value is near zero which is very different from Selangor and Sabah. Hence, we did another correlation comparison is to take the period of the state when their vaccinated rate is over 10% of their population and the result show that all 3 state their correlation values are also dropped and near to zero. Moreover, based on the line graph, we can see that Sarawak vaccinated rate increased faster than another two states so, in the full period columns result, Sarawak correlation value is already very low. In conclusion, we can conclude that when the vaccinated rate reaches a certain point, the correlation value between daily fully vaccinated and daily new cases of the specific states will drop to a certain point and near to zero.
+''')
+
+fig = make_subplots(specs=[[{"secondary_y": True}]])
+fig.add_trace(go.Line(x=vax_percentage_selangor1['date'], y=vax_percentage_selangor1['percentage_vaccinated'], name='Selangor'), secondary_y=False)
+fig.add_trace(go.Line(x=vax_percentage_sabah1['date'], y=vax_percentage_sabah1['percentage_vaccinated'], name='Sabah'), secondary_y=False)
+fig.add_trace(go.Line(x=vax_percentage_sarawak1['date'], y=vax_percentage_sarawak1['percentage_vaccinated'], name='Sarawak'), secondary_y=False)
+st.plotly_chart(fig)
 
 # =============================================================================
 # Which states have been most affected by Covid clusters?
@@ -259,21 +278,20 @@ Thailand = getCountry('Thailand')
 Vietnam = getCountry('Vietnam')
 
 # stupid plotly cannot do multiple lines in one plot, so use seaborn
-fig, ax = plt.subplots(figsize=(25, 10))
-ax.plot(Brunei['date'], Brunei['percentage_vaccinated'], label = "Brunei")
-ax.plot(Myanmar['date'], Myanmar['percentage_vaccinated'], label = "Myanmar")
-ax.plot(Cambodia['date'], Cambodia['percentage_vaccinated'], label = "Cambodia")
-ax.plot(Indonesia['date'], Indonesia['percentage_vaccinated'], label = "Indonesia")
-ax.plot(Laos['date'], Laos['percentage_vaccinated'], label = "Laos")
-ax.plot(Malaysia['date'], Malaysia['percentage_vaccinated'], label = "Malaysia")
-ax.plot(Philippines['date'], Philippines['percentage_vaccinated'], label = "Philippines")
-ax.plot(Singapore['date'], Singapore['percentage_vaccinated'], label = "Singapore")
-ax.plot(Thailand['date'], Thailand['percentage_vaccinated'], label = "Thailand")
-ax.plot(Vietnam['date'], Vietnam['percentage_vaccinated'], label = "Vietnam")
-ax.set_xticks(ax.get_xticks()[::10])
-ax.tick_params(axis='x', labelrotation=90)
-plt.legend()
-st.pyplot(fig)
+
+fig = make_subplots(specs=[[{"secondary_y": True}]])
+fig.add_trace(go.Line(x=Malaysia['date'], y=Malaysia['percentage_vaccinated'], name='Malaysia'), secondary_y=False)
+fig.add_trace(go.Line(x=Brunei['date'], y=Brunei['percentage_vaccinated'], name='Brunei'), secondary_y=False)
+fig.add_trace(go.Line(x=Myanmar['date'], y=Myanmar['percentage_vaccinated'], name='Myanmar'), secondary_y=False)
+fig.add_trace(go.Line(x=Cambodia['date'], y=Cambodia['percentage_vaccinated'], name='Cambodia'), secondary_y=False)
+fig.add_trace(go.Line(x=Indonesia['date'], y=Indonesia['percentage_vaccinated'], name='Indonesia'), secondary_y=False)
+fig.add_trace(go.Line(x=Laos['date'], y=Laos['percentage_vaccinated'], name='Laos'), secondary_y=False)
+fig.add_trace(go.Line(x=Philippines['date'], y=Philippines['percentage_vaccinated'], name='Philippines'), secondary_y=False)
+fig.add_trace(go.Line(x=Singapore['date'], y=Singapore['percentage_vaccinated'], name='Singapore'), secondary_y=False)
+fig.add_trace(go.Line(x=Thailand['date'], y=Thailand['percentage_vaccinated'], name='Thailand'), secondary_y=False)
+fig.add_trace(go.Line(x=Vietnam['date'], y=Vietnam['percentage_vaccinated'], name='Vietnam'), secondary_y=False)
+fig.update_layout(title_text='Vaccination Campaigns Across ASEAN', xaxis_title='Date', yaxis_title='Percentage of Population Vaccinated', yaxis_title_text='Percentage of Population Vaccinated')
+st.plotly_chart(fig)
 
 st.markdown('''
 The line graph above shows that the vaccination rate for each country in South-East Asia. Based on the result, we can see that Cambodia has the highest vaccinated rate compared to other countries and Myanmar have the lowest vaccinated rate which is near zero. For Malaysia, we ranked top 3 in the graph and the vaccinated rate is near 45%. Hence, we can conclude that Malaysia's vaccination campaign is doing better than the majority of South-East Asia's countries.
@@ -343,18 +361,20 @@ st.markdown('''
 ### Vaccine Distribution Modelling
 ''')
 
-fig = plt.figure(figsize=(15, 10))
-sns.lineplot(x='date', y='pfizer', data=vax_malaysia_all_attributes)
-sns.lineplot(x='date', y='sinovac', data=vax_malaysia_all_attributes)
-sns.lineplot(x='date', y='astra', data=vax_malaysia_all_attributes)
-sns.lineplot(x='date', y='cansino', data=vax_malaysia_all_attributes)
-# only show some xtick labels
-plt.xticks([date for i, date in enumerate(vax_malaysia_all_attributes['date']) if i % 10 == 0], rotation=45)
-plt.legend(['Pfizer', 'Sinovac', 'Astra', 'Cansino'])
-st.pyplot(fig)
+fig = make_subplots(specs=[[{"secondary_y": True}]])
+fig.add_trace(go.Line(x=vax_malaysia_all_attributes['date'], y=vax_malaysia_all_attributes['pfizer'], name='Pfizer', mode='lines'), secondary_y=False)
+fig.add_trace(go.Line(x=vax_malaysia_all_attributes['date'], y=vax_malaysia_all_attributes['sinovac'], name='Sinovac', mode='lines'), secondary_y=False)
+fig.add_trace(go.Line(x=vax_malaysia_all_attributes['date'], y=vax_malaysia_all_attributes['astra'], name='Astrazeneca', mode='lines'), secondary_y=False)
+fig.add_trace(go.Line(x=vax_malaysia_all_attributes['date'], y=vax_malaysia_all_attributes['cansino'], name='Cansino', mode='lines'), secondary_y=False)
+st.plotly_chart(fig)
+
 vaccine_totals = pd.DataFrame(vax_malaysia_all_attributes[['pfizer', 'astra', 'sinovac']].sum().reset_index())
 vaccine_totals.columns = ['vaccine', 'total']
 
 # plotly pie chart
 vaccines_pie = px.pie(vaccine_totals, values='total', names='vaccine', title='Vaccine Distribution')
 st.plotly_chart(vaccines_pie)
+
+st.write('''
+Pfizer is the most used vaccine in Malaysia, followed by Sinovac and then Astrazeneca. If you observe the usage of Astrazeneca, it flails in comparison to the other two because it was opened up for voluntary registrations. Furthermore, unlike Pfizer and Sinovac, Astrazeneca usage does not show an upward trend and only has a few spikes, which may be attributed to the government opening up registrations.
+''')
