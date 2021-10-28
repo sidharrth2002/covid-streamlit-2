@@ -110,7 +110,8 @@ with open("./states_lat_lon.txt", "r") as f:
             state_locations.append(data_dict)
 state_locations = pd.DataFrame(state_locations)
 
-cases_state_locations = cases_state.copy()
+cases_state_locations = c
+ases_state.copy()
 cases_state_locations = cases_state_locations[cases_state_locations['date'] == '2021-10-09']
 cases_state_locations = cases_state_locations.groupby('state').sum()
 cases_state_locations = cases_state_locations.reset_index()
@@ -120,13 +121,13 @@ try:
     ALL_LAYERS = {
         "Covid Cases": pdk.Layer(
             "HexagonLayer",
-            data=cases_state_locations.to_json(orient='records'),
+            data=cases_state_locations,
+            elevation_scale=4,
             pickable=True,
             extruded=True,
-            get_position=["lon", "lat"],
+            get_position="[lat, lon]",
             get_text="state",
-            # get_radius="[cases_new]",
-            elevation_scale=10,
+            get_radius="[cases_new]",
             # elevation_range=[0, 1000],
         )
     }
