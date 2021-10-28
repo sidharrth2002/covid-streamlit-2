@@ -94,6 +94,14 @@ st.title("A Comprehensive Exploration of Covid-19 in Malaysia 🇲🇾")
 st.subheader("Sidharrth Nagappan, Eugene Kan, Tan Zhi Hang")
 st.image('./covid-malaysia.jpeg')
 
+st.markdown("This notebook will conduct a comprehensive analysis of Covid-19 in Malaysia, while evaluating the performance of the nation in combatting the pandemic and putting this performance up against other countries in South East Asia. Covid-19 has taken the world by storm and we use open data to extract critical insights.")
+
+st.markdown('''There are 3 parts to this notebook:\n
+            1. Preprocessing\n
+            2. Exploratory Data Analysis\n
+            3. Modeling\n
+            ''')
+
 # DISPLAY MAP WITH CASES AND DEATHS
 st.markdown('''
 ## Spatially Mapped Covid-19 data
@@ -110,8 +118,7 @@ with open("./states_lat_lon.txt", "r") as f:
             state_locations.append(data_dict)
 state_locations = pd.DataFrame(state_locations)
 
-cases_state_locations = c
-ases_state.copy()
+cases_state_locations = cases_state.copy()
 cases_state_locations = cases_state_locations[cases_state_locations['date'] == '2021-10-09']
 cases_state_locations = cases_state_locations.groupby('state').sum()
 cases_state_locations = cases_state_locations.reset_index()
@@ -152,6 +159,25 @@ except URLError as e:
         Connection error: %s
     """ % e.reason)
 
+st.markdown('''
+### Reading dataset files
+Should you want to change the datasets or update to the latest date, place in folders from https://github.com/CITF-Malaysia/citf-public:
+* cases
+  * epidemic
+* vaccination
+  * vaccination
+  
+The following datasets will be used, all sourced from the Ministry of Health's Open Data:\n
+1. cases_malaysia.csv\n
+2. cases_state.csv\n
+3. clusters.csv\n
+4. deaths_malaysia.csv\n
+5. deaths_state.csv\n
+6. hospital.csv\n
+7. icu.csv\n
+8. pkrc.csv\n
+9. tests_malaysia.csv\n
+10. tests_state.csv''')
 
 
 # =============================================================================
