@@ -160,24 +160,8 @@ except URLError as e:
     """ % e.reason)
 
 st.markdown('''
-### Reading dataset files
-Should you want to change the datasets or update to the latest date, place in folders from https://github.com/CITF-Malaysia/citf-public:
-* cases
-  * epidemic
-* vaccination
-  * vaccination
-  
-The following datasets will be used, all sourced from the Ministry of Health's Open Data:\n
-1. cases_malaysia.csv\n
-2. cases_state.csv\n
-3. clusters.csv\n
-4. deaths_malaysia.csv\n
-5. deaths_state.csv\n
-6. hospital.csv\n
-7. icu.csv\n
-8. pkrc.csv\n
-9. tests_malaysia.csv\n
-10. tests_state.csv''')
+## Exploratory Data Analysis
+Exploratory Data Analysis helps us obtain a statistical overview of the data and answer interesting questions to extract patterns that may exist.''')
 
 
 # =============================================================================
@@ -203,13 +187,32 @@ st.markdown('''
 There appears to be a weak correlation, hinting that Covid cases may not be a totally socio-economic one. As the average income of the state increases, the more populated it generally is, which would mean more cases. The population is a strong **confounding variable**.
 ''')
 # =============================================================================
+# Is there a correlation between vaccination and daily cases at a national level
+# =============================================================================
+# prepare a generic function that calculates the cumulative sum of cases and percentage vaccinated for the whole nation
+st.markdown('''
+### Is there a correlation between vaccination and daily cases at a national level?
+
+We first obtain a new dataframe which only contains the date and the cummulative vaccination head count then we examine their correlation and visualize it using heatmap.''')
+
+corr_vaccine = vax_malaysia[['date','cumul_vaccine']]
+malaysia_cases = cases_state[['date','state','cases_new']]
+filtered_my_cases = malaysia_cases.groupby('date').sum().reset_index()
+merged_data_frame = pd.merge(filtered_my_cases, corr_vaccine, on=['date'])
+corr_merged_data_frame = merged_data_frame.corr()
+
+fig, ax = plt.subplots()
+sns.heatmap(corr_merged_data_frame, ax=ax)
+st.write(fig)
+
+st.write("From the heat map, we can see that the daily new cases positively correlate to each other. We plan to see the daily cases in each state but the result here is too confusing as we have 14 states. Hence we decided to plot out the graph individually to see the effect of the vaccine.")
+# =============================================================================
 # Is there any correlation between vaccination and daily cases for Selangor, Sabah, Sarawak, and many more?
 # =============================================================================
 # prepare a generic function that calculates the cumulative sum of cases and percentage vaccinated for each state
 st.markdown(''''
 ### Vaccination vs Daily Cases
-We first did correlation with all the values for each state, but soon realised that the initial 10% would stall the trend. Therefore, we calculate a correlation by first removing the first 10% of the vaccination campaign. Now, we can really start to see the effect of vaccination.
-''')
+A naive way to answer this question is to find the correlation across the entire pandemic, but this does not take into account the time for the vaccines to start showing their effects. We try calculating the correlations only after a certain percentage of the population has been vaccinated.''')
 def cases_vax_corr(state, mode = 1):
     vax_state_temp = vax_state.copy()
     vax_state_temp = vax_state_temp[vax_state_temp['state'] == state]
@@ -226,6 +229,8 @@ def cases_vax_corr(state, mode = 1):
     corr = state_merged[['daily', 'cases_new']].corr()
     return corr,vax_state_temp
 
+
+st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')
 corr_selangor1,vax_percentage_selangor1 = cases_vax_corr('Selangor',1)
 corr_selangor2,vax_percentage_selangor2 = cases_vax_corr('Selangor',2)
 corr_sabah1,vax_percentage_sabah1 = cases_vax_corr('Sabah',1)
