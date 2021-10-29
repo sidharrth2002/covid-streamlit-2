@@ -784,8 +784,6 @@ if time_series_model == 'LSTM':
     time_series.legend()
     st.pyplot(time_series)
 
-
-
 elif time_series_model == 'SVR':
     X_scaler_svr = MinMaxScaler()
     y_scaler_svr = MinMaxScaler()
@@ -811,6 +809,55 @@ elif time_series_model == 'SVR':
 
     # mean squared error
     st.write(f"Mean Squared Error: {mean_squared_error(y_test, svr.predict(X_test))}")
+
+st.write('''
+### Does the current vaccination rate allow herd immunity to be achieved by 30 November 2021? You can assume that herd immunity can be achieved with 80% of the population having been vaccinated.
+
+To answer this question, we use ARIMA forecasting (Auto-Regressive Integrated Moving Average) to predict the future. A problem is that ARIMA is univariate in nature, so we have to acknowledge that the estimates are quite rough.
+''')
+st.write('ARIMA best parameters obtained using SARIMAX hyperparameter tuning.')
+st.write('Best model: SARIMAX(1, 1, 1)')
+
+vax_malaysia['cumul_full'] = vax_malaysia['daily_full'].cumsum()
+train = vax_malaysia[:len(vax_malaysia) - 50]
+test = vax_malaysia[len(vax_malaysia) - 50:]
+
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+model = SARIMAX(train['cumul_full'], order=(1, 1, 1))
+result = model.fit()
+
+start = len(train)
+end = len(train) + len(test) - 1
+predictions = result.predict(start, end, typ='levels').rename('Predictions')
+
+start = 228
+end = 268
+predictions = result.predict(start, end, typ='levels').rename('Predictions')
+
+cumul_vaccine = list(vax_malaysia['cumul_full'])
+cumul_vaccine += predictions.tolist()
+
+from datetime import date, timedelta
+def add_date(dt, row):
+    split = dt.split('-')
+    year = int(split[0])
+    month = int(split[1])
+    day = int(split[2])
+    date_orig = date(year, month, day)
+    new_date = date_orig + timedelta(days=row)
+    return str(new_date)
+dts = [add_date('2021-11-09', i) for i in range(1, 42)]
+dts = list(vax_malaysia['date']) + dts
+
+malaysia_population = population[population['state']=='Malaysia']['pop'].values[0]
+
+future = px.line(x=dts, y=cumul_vaccine / malaysia_population, title='Vaccination Rate in Malaysia (extrapolated')
+st.plotly_chart(future)
+
+st.markdown('''
+Based on ARIMA auto-regressive prediction, it is possible that herd immunity will be reached before 30 November, if it continues at this rate.
+''')
 
 st.markdown('''
 ## Classification
