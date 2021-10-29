@@ -28,6 +28,14 @@ from sklearn.metrics import classification_report, confusion_matrix, mean_square
 import plotly.figure_factory as ff
 from tensorflow.keras.models import load_model
 from sklearn.svm import SVR
+from sklearn.feature_selection import SelectKBest, mutual_info_regression, RFE
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split  
+from sklearn.tree import DecisionTreeRegressor  
+from sklearn.metrics import mean_squared_error,mean_absolute_error
+from sklearn.ensemble import RandomForestRegressor
+from boruta import BorutaPy
+
 
 # from pages import Clusteing, EDA # import your pages here
 
@@ -61,6 +69,25 @@ income = pd.read_csv('./vaccination/static/income.csv')
 global_datasets =  pd.read_csv('./global_datasets/owid-covid-data.csv')
 aefi = pd.read_csv('./cases/vaccination/aefi.csv')
 trace_malaysia = pd.read_csv('./cases/mysejahtera/trace_malaysia.csv')
+
+before_pp_cases_malaysia = cases_malaysia.copy()
+before_pp_cases_state = cases_state.copy()
+before_pp_clusters = clusters.copy()
+before_pp_deaths_malaysia = deaths_malaysia.copy()
+before_pp_deaths_state = deaths_state.copy()
+before_pp_hospital = hospital.copy()
+before_pp_icu = icu.copy()
+before_pp_pkrc = pkrc.copy()
+before_pp_tests_malaysia = tests_malaysia.copy()
+before_pp_tests_state = tests_state.copy()
+before_pp_vax_malaysia = vax_malaysia.copy()
+before_pp_vax_state = vax_state.copy()
+before_pp_vaxreg_malaysia = vaxreg_malaysia.copy()
+before_pp_vaxreg_state = vaxreg_state.copy()
+before_pp_population = population.copy()
+before_pp_checkins = checkins.copy()
+before_pp_income = income.copy()
+
 trace_malaysia.fillna(0,inplace=True)
 trace_malaysia.drop_duplicates(inplace=True)
 
@@ -886,6 +913,130 @@ Based on ARIMA auto-regressive prediction, it is possible that herd immunity wil
 ''')
 
 st.markdown('''
+### Can we predict Covid-19 mortality numbers across the nation?
+''')
+
+dataset1 = before_pp_cases_malaysia.copy()
+dataset2 = before_pp_deaths_malaysia.copy()
+dataset2 = dataset2[['date','deaths_new']]
+dataset3 = before_pp_tests_malaysia.copy()
+dataset4 = before_pp_vax_malaysia.copy()
+total_dataset = dataset1.merge(dataset2, how='inner', on=['date'] )
+total_dataset.fillna(0, inplace=True)
+total_dataset = total_dataset.merge(dataset3, how='inner', on=['date'] )
+total_dataset.fillna(0, inplace=True)
+total_dataset = total_dataset.merge(dataset4, how='inner', on=['date'] )
+total_dataset.fillna(0, inplace=True)
+
+X = total_dataset.drop(['date','deaths_new'], axis=1)  
+y = total_dataset['deaths_new']  
+
+selector = SelectKBest(mutual_info_regression, k=6)
+selector.fit(X, y)
+mutual_info_best = X.columns[selector.get_support()]
+
+rfe_selector = RFE(LinearRegression(), n_features_to_select=10)
+rfe_selector.fit(X, y)
+rfe_best = X.columns[rfe_selector.get_support()]
+
+rf = RandomForestRegressor(n_jobs=4, oob_score=True)
+boruta = BorutaPy(rf, n_estimators='auto', verbose=2, random_state=0)
+boruta.fit(X.values, y.ravel())
+boruta_best = [X.columns[i] for i, x in enumerate(boruta.support_) if x]
+
+train_model_dataset = total_dataset[boruta_best]
+train_model_dataset['deaths_new'] = total_dataset['deaths_new']
+
+X = train_model_dataset.drop(['deaths_new'], axis=1)  
+X = MinMaxScaler().fit_transform(X)
+y = train_model_dataset['deaths_new']  
+y = MinMaxScaler().fit_transform(y.values.reshape(-1, 1))
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=2) 
+
+regressor = DecisionTreeRegressor(max_depth=2, criterion="mae", splitter="best")  
+regressor.fit(X_train, y_train) 
+pred = regressor.predict(X_test)
+
+mae = round(mean_absolute_error(y_test, pred),4)
+mse = round(mean_squared_error(y_test, pred),4)
+
+st.write(f"DecisionTreeRegressor MAE: {mae}")
+st.write(f"DecisionTreeRegressor MSE: {mse}")
+
+st.markdown('''
+First of all, we perform feature selection from cases_malaysia.csv, deaths_malaysia.csv, and tests_malaysia.csv datasets 
+by using Boruta in python. After that , the  features that are being selected will be used to train our decision tree 
+regressor model. For our model, it is able to archieve a 0.057 mean absolute error and a 0.0123 mean squared error. Hence, based on our result
+''')
+
+st.markdown('''
+### Can we predict mortality numbers for Melaka, Negeri Sembilan, Perlis, Selangor and W.P. Putrajaya?
+''')
+
+def state_mortality_prediction(state) :
+    dataset1 = before_pp_cases_state.copy()
+    dataset2 = before_pp_deaths_state.copy()
+    dataset2 = dataset2[['date','state','deaths_new']]
+    dataset3 = before_pp_tests_state.copy()
+    dataset4 = before_pp_vax_state.copy()
+    total_dataset = dataset1[dataset1['state'] == state].merge(dataset2[dataset2['state'] == state], how='inner', on=['date','state'] )
+    total_dataset.fillna(0, inplace=True)
+    total_dataset = total_dataset.merge(dataset3[dataset3['state'] == state], how='inner', on=['date','state'] )
+    total_dataset.fillna(0, inplace=True)
+    total_dataset = total_dataset.merge(dataset4[dataset4['state'] == state], how='inner', on=['date','state'] )
+    total_dataset.fillna(0, inplace=True)
+    X = total_dataset.drop(['date','deaths_new','state'], axis=1)  
+    y = total_dataset['deaths_new']  
+
+    selector = SelectKBest(mutual_info_regression, k=6)
+    selector.fit(X, y)
+    mutual_info_best = X.columns[selector.get_support()]
+
+    rfe_selector = RFE(LinearRegression(), n_features_to_select=10)
+    rfe_selector.fit(X, y)
+    rfe_best = X.columns[rfe_selector.get_support()]
+
+    rf = RandomForestRegressor(n_jobs=4, oob_score=True)
+    boruta = BorutaPy(rf, n_estimators='auto', verbose=2, random_state=0)
+    boruta.fit(X.values, y.ravel())
+    boruta_best = [X.columns[i] for i, x in enumerate(boruta.support_) if x]
+    print(boruta_best)
+
+    return boruta_best,total_dataset
+
+def get_result(boruta_best , total_dataset) :
+    train_model_dataset = total_dataset[boruta_best]
+    train_model_dataset['deaths_new'] = total_dataset['deaths_new']
+    X = train_model_dataset.drop(['deaths_new'], axis=1)  
+    X = MinMaxScaler().fit_transform(X)
+    y = train_model_dataset['deaths_new']  
+    y = MinMaxScaler().fit_transform(y.values.reshape(-1, 1))
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=2) 
+    regressor = DecisionTreeRegressor(max_depth=2, criterion="mae", splitter="best")  
+    regressor.fit(X_train, y_train) 
+    pred = regressor.predict(X_test)
+    mae = round(mean_absolute_error(y_test, pred),4)
+    mse = round(mean_squared_error(y_test, pred),4)
+
+    st.write(f"DecisionTreeRegressor MAE: {mae}")
+    st.write(f"DecisionTreeRegressor MSE: {mse}")
+
+st.markdown('''
+For these questions, we used boruta for the features selection part and the datasets involved are cases_state.csv, 
+deaths_state.csv, tests_state.csv, and vax_state.csv. After the features are selected, we will use the features in 
+our decision tree regressor model to perform the prediction. Based on our results, Selangor scored the lowest value 
+in the mean absolute error which is only 0.0554 and Selangor also scored the lowest value in the mean squared error 
+result,0.0042.
+''')
+
+state_choosen = st.selectbox('Which state you want to check?', ['Melaka', 'Negeri Sembilan', 'Perlis','Selangor','W.P. Putrajaya'])
+st.write(f"{state_choosen}")
+boruta_best , total_dataset = state_mortality_prediction(state_choosen)
+get_result(boruta_best , total_dataset)
+
+st.markdown('''
 ## Classification
 ''')
 st.markdown('''
@@ -969,73 +1120,3 @@ else:
 
     # plot confusion matrix with plotly
     cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
-
-
-st.markdown('''
-### Can we predict the type of vaccine based on the symptoms?
-
-Some vaccines produce more of a certain symptom than others. Hence, would it be possible to predict whether the vaccine is Pfizer, Sinovac, Astra, etc. based purely on the symptoms reported each day.
-
-We use self-reported symptoms for each vaccine daily as the training data. Appropriate hyperparameter tuning is done using GridSearchCV for the Random Forest Classifier. Both Logistic Regression and the Support Vector Classifier are evaluated for this question using the metrics accuracy and weighted averaged F1-Score. The training set is SMOTE-d.
-
-Feature selection (symptoms) is done using Recursive Feature Elimination.
-''')
-vaccine_prediction = aefi.copy()
-vaccine_prediction['vaxtype_label'] = LabelEncoder().fit_transform(vaccine_prediction['vaxtype'])
-# recursive feature elimination
-from sklearn.feature_selection import RFE
-from sklearn.linear_model import LogisticRegression
-
-y_encoder = LabelEncoder()
-
-X = vaccine_prediction.drop(columns=['date', 'vaxtype', 'vaxtype_label'])
-y = y_encoder.fit_transform(vaccine_prediction['vaxtype'])
-
-logreg = LogisticRegression()
-rfe = RFE(logreg, 20)
-rfe = rfe.fit(X, y)
-
-X_transformed = pd.DataFrame(rfe.transform(X), columns=X.columns[rfe.support_])
-
-X_train, X_test, y_train, y_test = train_test_split(X_transformed, y, test_size=0.2, random_state=42)
-smt = SMOTE(random_state=42, k_neighbors=3)
-X_smt, y_smt = smt.fit_resample(X_train, y_train)
-
-classification_model2 = st.selectbox('Which classification model do you want to test?', ['Logistic Regression', 'Support Vector Regression'])
-
-if classification_model2 == 'Logistic Regression':
-    logreg = LogisticRegression()
-    logreg.fit(X_smt, y_smt)
-    accuracy = logreg.score(X_test, y_test)
-    f1 = f1_score(y_test, logreg.predict(X_test), average='weighted')
-    st.write(f"Accuracy of Logistic Regression: {accuracy}")
-    st.write(f"Weighted Averaged F1-Score of Logistic Regression: {f1}")
-
-    y_pred = logreg.predict(X_test)
-
-    # confusion matrix
-    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['Pfizer', 'Sinovac', 'Astrazeneca', 'Cansino'], y=['True Pfizer', 'True Sinovac', 'True Astrazeneca', 'True Cansino'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
-    st.plotly_chart(cf)
-
-elif classification_model2 == 'Support Vector Regression':
-    # defining parameter range
-    param_grid = {'C': [0.1, 1, 10, 100, 1000],
-                'gamma': [1, 0.1, 0.01, 0.001, 0.0001],
-                'kernel': ['linear', 'rbf']}
-
-    grid = GridSearchCV(SVC(), param_grid, refit = True, verbose = 3)
-
-    # fitting the model for grid search
-    grid.fit(X_smt, y_smt)
-    svc = grid.best_estimator_
-    st.write(f'Best Model {svc}')
-    accuracy = svc.score(X_test, y_test)
-    f1 = f1_score(y_test, svc.predict(X_test), average='weighted')
-    st.write(f"Accuracy of Support Vector Regression: {accuracy}")
-    st.write(f"Weighted Averaged F1-Score of Support Vector Regression: {f1}")
-
-    y_pred = svc.predict(X_test)
-
-    # confusion matrix
-    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['Pfizer', 'Sinovac', 'Astrazeneca', 'Cansino'], y=['True Pfizer', 'True Sinovac', 'True Astrazeneca', 'True Cansino'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
-    st.plotly_chart(cf)
