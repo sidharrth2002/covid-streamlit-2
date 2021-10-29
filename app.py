@@ -1,5 +1,7 @@
+from os import name
 from seaborn.matrix import heatmap
 import streamlit as st
+import numpy as np
 import pandas as pd
 import pydeck as pdk
 import plotly.express as px
@@ -17,13 +19,15 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from multipage import MultiPage
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
 from multipage import MultiPage
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, mean_squared_error
 import plotly.figure_factory as ff
+from tensorflow.keras.models import load_model
+from sklearn.svm import SVR
 
 # from pages import Clusteing, EDA # import your pages here
 
@@ -707,6 +711,106 @@ st.markdown('''
     2. Multivariate Support Vector Regression
 ''')
 
+st.markdown('''
+### Can we predict the daily vaccination numbers?
+Assuming that vaccination numbers depend on various external factors such as government incentives, spikes in cases, etc., could we predict the daily vaccination numbers using time-series regression models?
+''')
+# vax_population = vax_malaysia.merge(population, on='state')
+malaysia_population = population[population['state'] == 'Malaysia']['pop'].iloc[0]
+vax_malaysia['cumul'] = vax_malaysia['daily_full'].cumsum()
+vax_malaysia['percentage_vaccinated'] = vax_malaysia['cumul'] / malaysia_population
+cases_testing_deaths_vax = cases_malaysia.merge(tests_malaysia, on='date')
+cases_testing_deaths_vax = cases_testing_deaths_vax.merge(deaths_malaysia, on='date')
+cases_testing_deaths_vax = cases_testing_deaths_vax.merge(vax_malaysia[['date', 'daily']], on='date')
+icu_covid = pd.DataFrame(icu.groupby('date')['icu_covid'].sum()).reset_index()
+cases_testing_deaths_vax = cases_testing_deaths_vax.merge(icu_covid, on='date')
+cases_testing_deaths_vax['cumul'] = cases_testing_deaths_vax['daily'].cumsum()
+
+features = ["cases_recovered", "cases_active", "cases_cluster",	"cases_pvax", "cases_fvax", "total_testing", "deaths_new", "icu_covid", "daily"]
+num_features = len(features) - 1
+filtered = cases_testing_deaths_vax[features]
+filtered['date'] = cases_testing_deaths_vax['date']
+filtered['date'] = pd.to_datetime(filtered['date'])
+filtered.set_index('date', inplace=True)
+
+time_series_model = st.selectbox('Select a time-series model', options=['LSTM', 'SVR'])
+
+if time_series_model == 'LSTM':
+    X_scaler = MinMaxScaler()
+    y_scaler = MinMaxScaler()
+    input_data = X_scaler.fit_transform(filtered.iloc[:,:-1])
+    input_y = y_scaler.fit_transform(filtered.iloc[:,-1].values.reshape(-1,1))
+    input_data = np.concatenate((input_data, input_y), axis=1)
+
+    lookback = 100
+    total_size = input_data.shape[0]
+
+    X=[]
+    y=[]
+    for i in range(0, total_size - lookback):
+        t = []
+        for j in range(0, lookback):
+            current_index = i+j
+            t.append(input_data[current_index, :-1])
+        X.append(t)
+        y.append(input_data[lookback+i, num_features])
+    X, y = np.array(X), np.array(y)
+
+    test_size = 50
+    X_test = X[-test_size:]
+    y_test = y[-test_size:]
+
+    X_rest = X[:-test_size]
+    y_rest = y[:-test_size]
+
+    X_train, X_valid, y_train, y_valid = train_test_split(X_rest, y_rest, test_size=0.15, random_state=42)
+
+    X_train = X_train.reshape(X_train.shape[0], lookback, num_features)
+    X_valid = X_valid.reshape(X_valid.shape[0], lookback, num_features)
+    X_test = X_test.reshape(X_test.shape[0], lookback, num_features)
+
+    model = load_model('lstm-time-series.h5')
+    predicted_vaccination = model.predict(X_test)
+
+    st.write(f"Mean Squared Error: {mean_squared_error(y_test, predicted_vaccination)}")
+
+    predicted_vaccination = y_scaler.inverse_transform(predicted_vaccination)
+
+    # line plot
+    time_series, _ = plt.subplots(1,1)
+    ax = time_series.add_subplot(1, 1, 1)
+    ax.plot(list(range(len(predicted_vaccination))), predicted_vaccination, label='Predicted', color='blue')
+    ax.plot(list(range(len(y_test))), y_scaler.inverse_transform(y_test.reshape(-1,1)), label='Actual', color='red')
+    time_series.legend()
+    st.pyplot(time_series)
+
+
+
+elif time_series_model == 'SVR':
+    X_scaler_svr = MinMaxScaler()
+    y_scaler_svr = MinMaxScaler()
+    X_svr = X_scaler_svr.fit_transform(filtered.iloc[:,:-1])
+    y_svr = y_scaler_svr.fit_transform(filtered.iloc[:,-1].values.reshape(-1,1))
+
+    X_train, X_test, y_train, y_test = train_test_split(X_svr, y_svr, test_size=0.15, random_state=42, shuffle=True)
+
+    svr = SVR(kernel='rbf', C=1e3, gamma=0.1)
+    svr.fit(X_train, y_train)
+
+    predicted_vaccination = svr.predict(X_test)
+    st.write(f"Mean Squared Error: {mean_squared_error(y_test, predicted_vaccination)}")
+    predicted_vaccination = y_scaler_svr.inverse_transform(predicted_vaccination)
+
+    # line plot
+    time_series, _ = plt.subplots(1,1)
+    ax = time_series.add_subplot(1, 1, 1)
+    ax.plot(list(range(len(predicted_vaccination))), predicted_vaccination, label='Predicted', color='blue')
+    ax.plot(list(range(len(y_test))), y_scaler_svr.inverse_transform(y_test.reshape(-1,1)), label='Actual', color='red')
+    time_series.legend()
+    st.pyplot(time_series)
+
+    # mean squared error
+    st.write(f"Mean Squared Error: {mean_squared_error(y_test, svr.predict(X_test))}")
 
 st.markdown('''
 ## Classification
