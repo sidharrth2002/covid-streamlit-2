@@ -1,8 +1,25 @@
+from seaborn.matrix import heatmap
 import streamlit as st
+import pandas as pd
+import pydeck as pdk
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn import preprocessing
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans, DBSCAN
+from urllib.error import URLError
+from PIL import Image
 from imblearn.over_sampling import SMOTE
-# import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
 
 def app():
     # ====================================================================
