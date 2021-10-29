@@ -1,4 +1,8 @@
 import streamlit as st
+from imblearn.over_sampling import SMOTE
+# import train_test_split
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
 
 def app():
     # ====================================================================
@@ -80,7 +84,7 @@ def app():
                                 'female_smokers','male_smokers','handwashing_facilities','hospital_beds_per_thousand','life_expectancy','human_development_index',
                                 'excess_mortality_cumulative_absolute','excess_mortality_cumulative','excess_mortality','excess_mortality_cumulative_per_million',
                                 ], inplace=True)
-                                
+
     st.markdown('''
     ## Clustering
     In this section, we will employ different clustering algorithms to see whether states suffering from Covid-19 form any visible patterns. 🦠

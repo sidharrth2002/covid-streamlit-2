@@ -22,6 +22,9 @@ from multipage import MultiPage
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
 from multipage import MultiPage
+from sklearn.metrics import classification_report, confusion_matrix
+import plotly.figure_factory as ff
+
 # from pages import Clusteing, EDA # import your pages here
 
 state_locations = []
@@ -751,7 +754,13 @@ if classification_model == 'Random Forest Classifier':
     f1 = f1_score(y_test, rf.predict(X_test), average='weighted')
 
     st.write(f"Accuracy of Random Forest: {accuracy}")
-    st.write(f"F1-Score of Random Forest: {f1}")
+    st.write(f"Weighted Averaged F1-Score of Random Forest: {f1}")
+
+    y_pred = rf.predict(X_test)
+
+    # plot confusion matrix with plotly
+    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred), x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred), colorscale='Viridis', showscale=True)
+    st.plotly_chart(cf)
 
 elif classification_model == 'Logistic Regression':
     log = LogisticRegression()
@@ -760,7 +769,13 @@ elif classification_model == 'Logistic Regression':
     f1 = f1_score(y_test, log.predict(X_test), average='weighted')
 
     st.write(f"Accuracy of Logistic Regression: {accuracy}")
-    st.write(f"F1-Score of Logistic Regression: {f1}")
+    st.write(f"Weighted Averaged F1-Score of Logistic Regression: {f1}")
+
+    # classification report
+    y_pred = log.predict(X_test)
+
+    # plot confusion matrix with plotly
+    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
 
 else:
     gnb = GaussianNB()
@@ -770,7 +785,14 @@ else:
     f1 = f1_score(y_test, gnb.predict(X_test), average='weighted')
 
     st.write(f"Accuracy of Naive Bayes: {accuracy}")
-    st.write(f"F1-Score of Naive Bayes: {f1}")
+    st.write(f"Weighted Averaged F1-Score of Naive Bayes: {f1}")
+
+    # classification report
+    y_pred = gnb.predict(X_test)
+
+    # plot confusion matrix with plotly
+    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
+
 
 st.markdown('''
 ### Can we predict the type of vaccine based on the symptoms?
@@ -787,15 +809,16 @@ vaccine_prediction['vaxtype_label'] = LabelEncoder().fit_transform(vaccine_predi
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 
+y_encoder = LabelEncoder()
+
 X = vaccine_prediction.drop(columns=['date', 'vaxtype', 'vaxtype_label'])
-y = vaccine_prediction['vaxtype_label']
+y = y_encoder.fit_transform(vaccine_prediction['vaxtype'])
 
 logreg = LogisticRegression()
 rfe = RFE(logreg, 20)
 rfe = rfe.fit(X, y)
 
 X_transformed = pd.DataFrame(rfe.transform(X), columns=X.columns[rfe.support_])
-X_transformed
 
 X_train, X_test, y_train, y_test = train_test_split(X_transformed, y, test_size=0.2, random_state=42)
 smt = SMOTE(random_state=42, k_neighbors=3)
@@ -809,7 +832,13 @@ if classification_model2 == 'Logistic Regression':
     accuracy = logreg.score(X_test, y_test)
     f1 = f1_score(y_test, logreg.predict(X_test), average='weighted')
     st.write(f"Accuracy of Logistic Regression: {accuracy}")
-    st.write(f"F1-Score of Logistic Regression: {f1}")
+    st.write(f"Weighted Averaged F1-Score of Logistic Regression: {f1}")
+
+    y_pred = logreg.predict(X_test)
+
+    # confusion matrix
+    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['Pfizer', 'Sinovac', 'Astrazeneca', 'Cansino'], y=['True Pfizer', 'True Sinovac', 'True Astrazeneca', 'True Cansino'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
+    st.plotly_chart(cf)
 
 elif classification_model2 == 'Support Vector Regression':
     # defining parameter range
@@ -826,4 +855,10 @@ elif classification_model2 == 'Support Vector Regression':
     accuracy = svc.score(X_test, y_test)
     f1 = f1_score(y_test, svc.predict(X_test), average='weighted')
     st.write(f"Accuracy of Support Vector Regression: {accuracy}")
-    st.write(f"F1-Score of Support Vector Regression: {f1}")
+    st.write(f"Weighted Averaged F1-Score of Support Vector Regression: {f1}")
+
+    y_pred = svc.predict(X_test)
+
+    # confusion matrix
+    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['Pfizer', 'Sinovac', 'Astrazeneca', 'Cansino'], y=['True Pfizer', 'True Sinovac', 'True Astrazeneca', 'True Cansino'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
+    st.plotly_chart(cf)

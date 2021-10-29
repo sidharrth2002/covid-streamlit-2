@@ -77,7 +77,7 @@ def app():
                                 'female_smokers','male_smokers','handwashing_facilities','hospital_beds_per_thousand','life_expectancy','human_development_index',
                                 'excess_mortality_cumulative_absolute','excess_mortality_cumulative','excess_mortality','excess_mortality_cumulative_per_million',
                                 ], inplace=True)
-    
+
     st.markdown('''
     ## Exploratory Data Analysis
     Exploratory Data Analysis helps us obtain a statistical overview of the data and answer interesting questions to extract patterns that may exist.''')
