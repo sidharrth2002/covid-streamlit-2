@@ -799,7 +799,7 @@ elif time_series_model == 'SVR':
 
     predicted_vaccination = svr.predict(X_test)
     st.write(f"Mean Squared Error: {mean_squared_error(y_test, predicted_vaccination)}")
-    predicted_vaccination = y_scaler_svr.inverse_transform(predicted_vaccination)
+    predicted_vaccination = y_scaler_svr.inverse_transform(predicted_vaccination.reshape(-1,1))
 
     # line plot
     time_series, _ = plt.subplots(1,1)
