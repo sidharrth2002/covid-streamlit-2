@@ -974,18 +974,18 @@ def state_mortality_prediction(state) :
     y = total_dataset['deaths_new']  
 
     state_features = {
-        'Selangor': ['pfizer1'],
-        'W.P. Putrajaya': ['cases_active'],
-        'Melaka': ['cases_active', 'daily'],
-        'Negeri Sembilan': ['cases_recovered', 'pcr', 'daily_partial_child'],
-        'Perlis': ['cases_active', 'cases_pvax', 'cases_fvax', 'cases_elderly']
+        'Selangor': ['cases_new', 'cases_import', 'cases_cluster', 'cases_child','cases_adolescent', 'cases_adult', 'cases_elderly', 'cumul_partial','cumul', 'cumul_full_child'],
+        'W.P. Putrajaya': ['cases_new', 'cases_import', 'cases_cluster', 'cases_pvax','cases_child', 'cases_adult', 'cases_elderly', 'daily_full_child','cumul_full_child', 'pending'],
+        'Melaka': ['cases_new', 'cases_recovered', 'cases_fvax', 'cases_child','cases_adolescent', 'cases_adult', 'cases_elderly', 'cumul_full_child','astra2', 'pending'],
+        'Negeri Sembilan': ['cases_new', 'cases_import', 'cases_fvax', 'cases_child', 'cases_adult','cases_elderly', 'cumul_partial', 'cumul_full', 'cumul', 'cansino'],
+        'Perlis': ['cases_new', 'cases_import', 'cases_cluster', 'cases_child','cases_adolescent', 'cases_elderly', 'daily_partial','daily_full_child', 'pfizer1', 'sinovac1']
     }
 
-    boruta_best = state_features[state]
-    return boruta_best, total_dataset
+    rfe_best = state_features[state]
+    return rfe_best, total_dataset
 
-def get_result(boruta_best , total_dataset) :
-    train_model_dataset = total_dataset[boruta_best]
+def get_result(rfe_best , total_dataset) :
+    train_model_dataset = total_dataset[rfe_best]
     train_model_dataset['deaths_new'] = total_dataset['deaths_new']
     X = train_model_dataset.drop(['deaths_new'], axis=1)  
     X = MinMaxScaler().fit_transform(X)
