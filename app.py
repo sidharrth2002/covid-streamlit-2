@@ -11,8 +11,12 @@ from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from urllib.error import URLError
+from multiapp import MultiApp
 
-state_locations = []
+app = MultiApp()
+app.add_app("EDA", EDA)
+
+app.run()
 
 # =============================================================================
 # LOADING DATA AND PREPROCESSING
@@ -231,6 +235,7 @@ def cases_vax_corr(state, mode = 1):
 
 
 st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')
+
 corr_selangor1,vax_percentage_selangor1 = cases_vax_corr('Selangor',1)
 corr_selangor2,vax_percentage_selangor2 = cases_vax_corr('Selangor',2)
 corr_sabah1,vax_percentage_sabah1 = cases_vax_corr('Sabah',1)
@@ -245,8 +250,7 @@ table = {'Full Period':[corr_selangor1['daily']['cases_new'], corr_sabah1['daily
 table = pd.DataFrame(table, index =['Selangor','Sabah','Sarawak'])
 st.dataframe(table)
 st.write('''
-Based on the table, we can see that for the full period columns, Selangor and Sabah have a very high positive correlation between daily fully vaccinated and daily new cases. However, Sarawak correlation value is near zero which is very different from Selangor and Sabah. Hence, we did another correlation comparison is to take the period of the state when their vaccinated rate is over 10% of their population and the result show that all 3 state their correlation values are also dropped and near to zero. Moreover, based on the line graph, we can see that Sarawak vaccinated rate increased faster than another two states so, in the full period columns result, Sarawak correlation value is already very low. In conclusion, we can conclude that when the vaccinated rate reaches a certain point, the correlation value between daily fully vaccinated and daily new cases of the specific states will drop to a certain point and near to zero.
-''')
+Based on the table, we can see that the correlation between vaccination and daily cases changes drastically in different periods of the vaccination campaign, showing no noticeable pattern.''')
 
 fig = make_subplots(specs=[[{"secondary_y": True}]])
 fig.add_trace(go.Line(x=vax_percentage_selangor1['date'], y=vax_percentage_selangor1['percentage_vaccinated'], name='Selangor'), secondary_y=False)
