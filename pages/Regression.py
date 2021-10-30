@@ -114,7 +114,7 @@ def app():
                                 'female_smokers','male_smokers','handwashing_facilities','hospital_beds_per_thousand','life_expectancy','human_development_index',
                                 'excess_mortality_cumulative_absolute','excess_mortality_cumulative','excess_mortality','excess_mortality_cumulative_per_million',
                                 ], inplace=True)
-    st.markdown('''
+    st.markdown(''''
     ## Regression
     ''')
     st.markdown('''
@@ -267,7 +267,7 @@ def app():
 
     malaysia_population = population[population['state']=='Malaysia']['pop'].values[0]
 
-    future = px.line(x=dts, y=cumul_vaccine / malaysia_population, title='Vaccination Rate in Malaysia (extrapolated')
+    future = px.line(x=dts, y=cumul_vaccine / malaysia_population, title='Vaccination Rate in Malaysia (extrapolated)')
     st.plotly_chart(future)
 
     st.markdown('''
@@ -276,11 +276,9 @@ def app():
 
     st.markdown('''
     ### Can we predict Covid-19 mortality numbers across the nation?
+    Covid-19 deaths are definitely dependent on external factors, so the question asked is whether we can train a regression model to predict Covid-19 deaths.
     ''')
-    before_pp_cases_malaysia = cases_malaysia.copy()
-    before_pp_deaths_malaysia = deaths_malaysia.copy()
-    before_pp_tests_malaysia = tests_malaysia.copy()
-    before_pp_vax_malaysia = vax_malaysia.copy()
+
     dataset1 = before_pp_cases_malaysia.copy()
     dataset2 = before_pp_deaths_malaysia.copy()
     dataset2 = dataset2[['date','deaths_new']]
@@ -293,23 +291,9 @@ def app():
     total_dataset = total_dataset.merge(dataset4, how='inner', on=['date'] )
     total_dataset.fillna(0, inplace=True)
 
-    X = total_dataset.drop(['date','deaths_new'], axis=1)  
-    y = total_dataset['deaths_new']  
+    features = ['cases_recovered', 'cases_active', 'cases_pvax', 'cases_child', 'cases_adolescent', 'cases_elderly', 'daily_partial', 'cumul_partial', 'cumul_full', 'cumul', 'cansino']
 
-    selector = SelectKBest(mutual_info_regression, k=6)
-    selector.fit(X, y)
-    mutual_info_best = X.columns[selector.get_support()]
-
-    rfe_selector = RFE(LinearRegression(), n_features_to_select=10)
-    rfe_selector.fit(X, y)
-    rfe_best = X.columns[rfe_selector.get_support()]
-
-    rf = RandomForestRegressor(n_jobs=4, oob_score=True)
-    boruta = BorutaPy(rf, n_estimators='auto', verbose=2, random_state=0)
-    boruta.fit(X.values, y.ravel())
-    boruta_best = [X.columns[i] for i, x in enumerate(boruta.support_) if x]
-
-    train_model_dataset = total_dataset[boruta_best]
+    train_model_dataset = total_dataset[features]
     train_model_dataset['deaths_new'] = total_dataset['deaths_new']
 
     X = train_model_dataset.drop(['deaths_new'], axis=1)  
@@ -330,20 +314,11 @@ def app():
     st.write(f"DecisionTreeRegressor MSE: {mse}")
 
     st.markdown('''
-    First of all, we perform feature selection from cases_malaysia.csv, deaths_malaysia.csv, and tests_malaysia.csv datasets 
-    by using Boruta in python. After that , the  features that are being selected will be used to train our decision tree 
-    regressor model. For our model, it is able to archieve a 0.057 mean absolute error and a 0.0123 mean squared error. Hence, based on our result
-    ''')
-
-    st.markdown('''
     ### Can we predict mortality numbers for Melaka, Negeri Sembilan, Perlis, Selangor and W.P. Putrajaya?
+    We looked at this analysis nationally, but what about at a state-level?
     ''')
 
     def state_mortality_prediction(state) :
-        before_pp_cases_state = cases_state.copy()
-        before_pp_deaths_state = deaths_state.copy()
-        before_pp_tests_state = tests_state.copy()
-        before_pp_vax_state = vax_state.copy()
         dataset1 = before_pp_cases_state.copy()
         dataset2 = before_pp_deaths_state.copy()
         dataset2 = dataset2[['date','state','deaths_new']]
@@ -358,24 +333,19 @@ def app():
         X = total_dataset.drop(['date','deaths_new','state'], axis=1)  
         y = total_dataset['deaths_new']  
 
-        selector = SelectKBest(mutual_info_regression, k=6)
-        selector.fit(X, y)
-        mutual_info_best = X.columns[selector.get_support()]
+        state_features = {
+            'Selangor': ['cases_new', 'cases_import', 'cases_cluster', 'cases_child','cases_adolescent', 'cases_adult', 'cases_elderly', 'cumul_partial','cumul', 'cumul_full_child'],
+            'W.P. Putrajaya': ['cases_new', 'cases_import', 'cases_cluster', 'cases_pvax','cases_child', 'cases_adult', 'cases_elderly', 'daily_full_child','cumul_full_child', 'pending'],
+            'Melaka': ['cases_new', 'cases_recovered', 'cases_fvax', 'cases_child','cases_adolescent', 'cases_adult', 'cases_elderly', 'cumul_full_child','astra2', 'pending'],
+            'Negeri Sembilan': ['cases_new', 'cases_import', 'cases_fvax', 'cases_child', 'cases_adult','cases_elderly', 'cumul_partial', 'cumul_full', 'cumul', 'cansino'],
+            'Perlis': ['cases_new', 'cases_import', 'cases_cluster', 'cases_child','cases_adolescent', 'cases_elderly', 'daily_partial','daily_full_child', 'pfizer1', 'sinovac1']
+        }
 
-        rfe_selector = RFE(LinearRegression(), n_features_to_select=10)
-        rfe_selector.fit(X, y)
-        rfe_best = X.columns[rfe_selector.get_support()]
+        rfe_best = state_features[state]
+        return rfe_best, total_dataset
 
-        rf = RandomForestRegressor(n_jobs=4, oob_score=True)
-        boruta = BorutaPy(rf, n_estimators='auto', verbose=2, random_state=0)
-        boruta.fit(X.values, y.ravel())
-        boruta_best = [X.columns[i] for i, x in enumerate(boruta.support_) if x]
-        print(boruta_best)
-
-        return boruta_best,total_dataset
-
-    def get_result(boruta_best , total_dataset) :
-        train_model_dataset = total_dataset[boruta_best]
+    def get_result(rfe_best , total_dataset) :
+        train_model_dataset = total_dataset[rfe_best]
         train_model_dataset['deaths_new'] = total_dataset['deaths_new']
         X = train_model_dataset.drop(['deaths_new'], axis=1)  
         X = MinMaxScaler().fit_transform(X)
@@ -392,15 +362,8 @@ def app():
         st.write(f"DecisionTreeRegressor MAE: {mae}")
         st.write(f"DecisionTreeRegressor MSE: {mse}")
 
-    st.markdown('''
-    For these questions, we used boruta for the features selection part and the datasets involved are cases_state.csv, 
-    deaths_state.csv, tests_state.csv, and vax_state.csv. After the features are selected, we will use the features in 
-    our decision tree regressor model to perform the prediction. Based on our results, Selangor scored the lowest value 
-    in the mean absolute error which is only 0.0554 and Selangor also scored the lowest value in the mean squared error 
-    result,0.0042.
-    ''')
+    state_choosen = st.selectbox('Which state do you want to check?', ['Melaka', 'Negeri Sembilan', 'Perlis','Selangor','W.P. Putrajaya'])
 
-    state_choosen = st.selectbox('Which state you want to check?', ['Melaka', 'Negeri Sembilan', 'Perlis','Selangor','W.P. Putrajaya'])
     st.write(f"{state_choosen}")
     boruta_best , total_dataset = state_mortality_prediction(state_choosen)
-    get_result(boruta_best , total_dataset)
+    get_result(boruta_best, total_dataset)
