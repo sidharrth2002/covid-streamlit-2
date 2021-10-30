@@ -35,6 +35,10 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import mean_squared_error,mean_absolute_error
 from sklearn.ensemble import RandomForestRegressor
 from boruta import BorutaPy
+from imblearn.over_sampling import SMOTE
+# import train_test_split
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
 
 def app():
     # =============================================================================
@@ -135,10 +139,6 @@ def app():
     filtered['date'] = cases_testing_deaths_vax_checkins['date']
     filtered['date'] = pd.to_datetime(filtered['date'])
     filtered.set_index('date', inplace=True)
-    from imblearn.over_sampling import SMOTE
-    # import train_test_split
-    from sklearn.model_selection import train_test_split
-    from sklearn.metrics import f1_score
     # SMOTE dataset
     X_scaler = MinMaxScaler()
     X = filtered.drop(columns=['ind_checkins_class'])
@@ -211,9 +211,6 @@ def app():
     ''')
     vaccine_prediction = aefi.copy()
     vaccine_prediction['vaxtype_label'] = LabelEncoder().fit_transform(vaccine_prediction['vaxtype'])
-    # recursive feature elimination
-    from sklearn.feature_selection import RFE
-    from sklearn.linear_model import LogisticRegression
 
     y_encoder = LabelEncoder()
 
@@ -227,11 +224,11 @@ def app():
     X_scaled = X_scaler.fit_transform(X_transformed)
     # X_transformed = pd.DataFrame(rfe.transform(X_scaled), columns=X.columns[rfe.support_])
 
-    X_train, X_test, y_train, y_test = train_test_split(X_transformed, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
     smt = SMOTE(random_state=42, k_neighbors=3)
     X_smt, y_smt = smt.fit_resample(X_train, y_train)
 
-    classification_model2 = st.selectbox('Which classification model do you want to test?', ['Logistic Regression', 'Support Vector Regression'])
+    classification_model2 = st.selectbox('Which classification model do you want to test?', ['Logistic Regression', 'Support Vector Classification'])
 
     if classification_model2 == 'Logistic Regression':
         logreg = LogisticRegression()
@@ -247,17 +244,13 @@ def app():
         cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['Pfizer', 'Sinovac', 'Astrazeneca', 'Cansino'], y=['True Pfizer', 'True Sinovac', 'True Astrazeneca', 'True Cansino'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
         st.plotly_chart(cf)
 
-    elif classification_model2 == 'Support Vector Regression':
+    elif classification_model2 == 'Support Vector Classification':
         # defining parameter range
-        param_grid = {'C': [0.1, 1, 10, 100, 1000],
-                    'gamma': [1, 0.1, 0.01, 0.001, 0.0001],
-                    'kernel': ['linear', 'rbf']}
+        best_params = {'C': 1000, 'gamma': 1, 'kernel': 'rbf'}
 
-        grid = GridSearchCV(SVC(), param_grid, refit = True, verbose = 3)
+        svc = SVC(**best_params)
+        svc.fit(X_smt, y_smt)
 
-        # fitting the model for grid search
-        grid.fit(X_smt, y_smt)
-        svc = grid.best_estimator_
         st.write(f'Best Model {svc}')
         accuracy = svc.score(X_test, y_test)
         f1 = f1_score(y_test, svc.predict(X_test), average='weighted')

@@ -78,6 +78,7 @@ def app():
     deaths_malaysia.drop_duplicates(inplace=True)
     before_pp_deaths_malaysia = deaths_malaysia.copy()
     deaths_malaysia.drop(columns=['deaths_bid', 'deaths_new_dod', 'deaths_bid_dod', 'deaths_pvax', 'deaths_fvax', 'deaths_tat'], inplace=True)
+    before_pp_deaths_state = deaths_state.copy()
     deaths_state.drop_duplicates(inplace=True)
     deaths_state_pivoted = deaths_state.pivot(index='date', columns='state', values='deaths_new')
     hospital.drop_duplicates(inplace=True)
@@ -99,6 +100,7 @@ def app():
     vax_malaysia_all_attributes['astra'] = vax_malaysia_all_attributes['astra1'] + vax_malaysia_all_attributes['astra2']
     vax_malaysia_all_attributes['sinovac'] = vax_malaysia_all_attributes['sinovac1'] + vax_malaysia_all_attributes['sinovac2']
     vax_malaysia.drop(columns=['daily_partial_child','cumul_partial','cumul_full','cumul','cumul_partial_child','cumul_full_child','pfizer1','pfizer2','sinovac1','sinovac2','astra1','astra2','cansino','pending'], inplace=True)
+    before_pp_vax_state = vax_state.copy()
     vax_state.drop_duplicates(inplace=True)
     vax_state.drop(columns=['daily_partial_child', 'daily_full_child','cumul_partial','cumul_full','cumul','cumul_partial_child','cumul_full_child','pfizer1','pfizer2','sinovac1','sinovac2','astra1','astra2','cansino','pending'], inplace=True)
     vaxreg_malaysia.drop_duplicates(inplace=True)
@@ -119,6 +121,7 @@ def app():
                                 'female_smokers','male_smokers','handwashing_facilities','hospital_beds_per_thousand','life_expectancy','human_development_index',
                                 'excess_mortality_cumulative_absolute','excess_mortality_cumulative','excess_mortality','excess_mortality_cumulative_per_million',
                                 ], inplace=True)
+    before_pp_tests_state = tests_state.copy()
     st.markdown(''''
     ## Regression
     ''')
@@ -220,19 +223,18 @@ def app():
         predicted_vaccination = y_scaler_svr.inverse_transform(predicted_vaccination.reshape(-1,1))
 
         # line plot
-        time_series, _ = plt.subplots(1,1)
-        ax = time_series.add_subplot(1, 1, 1)
+        time_series2, _ = plt.subplots(1,1)
+        ax = time_series2.add_subplot(1, 1, 1)
         ax.plot(list(range(len(predicted_vaccination))), predicted_vaccination, label='Predicted', color='blue')
         ax.plot(list(range(len(y_test))), y_scaler_svr.inverse_transform(y_test.reshape(-1,1)), label='Actual', color='red')
-        time_series.legend()
-        st.pyplot(time_series)
+        time_series2.legend()
+        st.pyplot(time_series2)
 
         # mean squared error
         st.write(f"Mean Squared Error: {mean_squared_error(y_test, svr.predict(X_test))}")
 
     st.write('''
-    ### Does the current vaccination rate allow herd immunity to be achieved by 30 November 2021? You can assume that herd immunity can be achieved with 80% of the population having been vaccinated.
-
+    ### Does the current vaccination rate allow herd immunity to be achieved by 30 November 2021?
     To answer this question, we use ARIMA forecasting (Auto-Regressive Integrated Moving Average) to predict the future. A problem is that ARIMA is univariate in nature, so we have to acknowledge that the estimates are quite rough.
     ''')
     st.write('ARIMA best parameters obtained using SARIMAX hyperparameter tuning.')
