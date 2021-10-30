@@ -140,10 +140,12 @@ def app():
     from sklearn.model_selection import train_test_split
     from sklearn.metrics import f1_score
     # SMOTE dataset
+    X_scaler = MinMaxScaler()
     X = filtered.drop(columns=['ind_checkins_class'])
+    X_scaled = X_scaler.fit_transform(X)
     y = filtered['ind_checkins_class']
     smt = SMOTE(random_state=42, k_neighbors=3)
-    X_smt, y_smt = smt.fit_resample(X, y)
+    X_smt, y_smt = smt.fit_resample(X_scaled, y)
 
     # train_test_split
     X_train, X_test, y_train, y_test = train_test_split(X_smt, y_smt, test_size=0.2, random_state=42)
@@ -182,6 +184,7 @@ def app():
 
         # plot confusion matrix with plotly
         cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
+        st.plotly_chart(cf)
 
     else:
         gnb = GaussianNB()
@@ -198,6 +201,7 @@ def app():
 
         # plot confusion matrix with plotly
         cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
+        st.plotly_chart(cf)
 
     st.markdown('''
     ### Can we predict the type of vaccine based on the symptoms?
@@ -216,11 +220,12 @@ def app():
     X = vaccine_prediction.drop(columns=['date', 'vaxtype', 'vaxtype_label'])
     y = y_encoder.fit_transform(vaccine_prediction['vaxtype'])
 
-    logreg = LogisticRegression()
-    rfe = RFE(logreg, 20)
-    rfe = rfe.fit(X, y)
+    features = ['daily_nonserious_mysj', 'daily_nonserious_npra', 'daily_serious_npra', 'daily_nonserious_mysj_dose1', 'd1_site_pain', 'd1_site_swelling', 'd1_site_redness', 'd1_headache', 'd1_muscle_pain', 'd1_joint_pain', 'd1_weakness', 'd1_fever', 'd1_chills', 'd1_rash', 'd2_site_pain', 'd2_site_swelling', 'd2_headache', 'd2_joint_pain', 'd2_fever', 'd2_chills']
 
-    X_transformed = pd.DataFrame(rfe.transform(X), columns=X.columns[rfe.support_])
+    X_transformed = X[features]
+    X_scaler = MinMaxScaler()
+    X_scaled = X_scaler.fit_transform(X_transformed)
+    # X_transformed = pd.DataFrame(rfe.transform(X_scaled), columns=X.columns[rfe.support_])
 
     X_train, X_test, y_train, y_test = train_test_split(X_transformed, y, test_size=0.2, random_state=42)
     smt = SMOTE(random_state=42, k_neighbors=3)

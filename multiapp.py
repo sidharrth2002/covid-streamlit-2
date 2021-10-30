@@ -5,6 +5,7 @@ through an object oriented framework.
 
 # Import necessary libraries 
 import streamlit as st
+st.set_page_config(page_title="Love Story between Covid-19 and Machine Learning", page_icon="💉")
 
 # Define the multipage class to manage the multiple apps in our program 
 class MultiPage: 
