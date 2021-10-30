@@ -118,6 +118,8 @@ def app():
     st.markdown('''
     ## Clustering
     In this section, we will employ different clustering algorithms to see whether states suffering from Covid-19 form any visible patterns. 🦠
+
+    Since different states have different testing rates, population densities, etc., we calculate the **cases per 10k** instead of all.
     ''')
 
     st.markdown('''
@@ -139,8 +141,8 @@ def app():
     deaths = []
 
     for state in states:
-        cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
-        deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum())
+        cases.append((cases_state_date[cases_state_date['state'] == state]['cases_new'].sum()) / (population[population['state'] == state]['pop'].values[0] / 10000))
+        deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum() / (population[population['state'] == state]['pop'].values[0] / 10000))
 
     cases_deaths_vaccinations = pd.DataFrame({"state": states, "cases": cases, "deaths": deaths})
     for col in cases_deaths_vaccinations:
@@ -155,7 +157,7 @@ def app():
     cases_deaths_vaccinations['cluster'] = y_clusters
     centroids = km.cluster_centers_
 
-    twodimensionalclusters = px.scatter(cases_deaths_vaccinations, x="cases", y="deaths", color="cluster")
+    twodimensionalclusters = px.scatter(cases_deaths_vaccinations, x="cases", y="deaths", color="cluster", labels={"cases": "Cases Per 10k", "deaths": "Deaths Per 10k"})
     st.plotly_chart(twodimensionalclusters)
 
     st.markdown('#### DBSCAN')
@@ -168,8 +170,8 @@ def app():
     deaths = []
 
     for state in states:
-        cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
-        deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum())
+        cases.append((cases_state_date[cases_state_date['state'] == state]['cases_new'].sum()) / (population[population['state'] == state]['pop'].values[0] / 10000))
+        deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum() / (population[population['state'] == state]['pop'].values[0] / 10000))
 
     cases_deaths_vaccinations = pd.DataFrame({"state": states, "cases": cases, "deaths": deaths})
 
@@ -192,9 +194,17 @@ def app():
     #### Analysis up until September 2021-October 2021
     We can observe that in the beginning, the majority of the clusters were positioned towards the bottom left and they maintain a similar pattern until about August 2020. In August, the cases were still high but there were fewer deaths, which may signify that the situation was improving, besides the one state that is in the upper corner of the plot that stands out from the rest. Around December, the bottom-right cluster begins to break up and states start moving diagonally upwards in the graph, meaning higher number of deaths and more cases. By September 2021, the states fall in a sort of straight diagonal line, with the performance of states spread across the spectrum from mild to serious.
 
-    If a state has high cases and low deaths, that shows the effectiveness of the vaccination campaign. This is because vaccines have been known to reduce the seriousness of cases. Evidently, as the vaccination campaign begins around the start of April, cluster points start to move mainly horizontally (smaller increase in deaths).
+    By October 2021, K-Means indicates the formation of 3 main clusters:\n
+    1. Low Cases and Low Deaths\n
+    2. High Cases and High Deaths\n
+    3. High Cases and Low Deaths\n
 
-    **We also set out to find that one state that created a cluster of it's own throughout and it was Selangor, to no one's surprise.**
+    If there are low deaths despite high cases, then that is acceptable because vaccines have been known to reduce the seriousness of cases. However, the states in "high cases and high deaths" need to be looked at:\n
+    1. Johor\n
+    2. Kedah\n
+    3. Pulau Pinang\n
+    4. Sabah\n
+    5. Selangor\n
     ''')
 
 
@@ -222,8 +232,8 @@ def app():
     states = ['Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang', 'Perak', 'Perlis', 'Pulau Pinang', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu', 'W.P. Kuala Lumpur', 'W.P. Labuan', 'W.P. Putrajaya']
 
     for state in states:
-        cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
-        deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum())
+        cases.append((cases_state_date[cases_state_date['state'] == state]['cases_new'].sum()) / (population[population['state'] == state]['pop'].values[0] / 10000))
+        deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum() / (population[population['state'] == state]['pop'].values[0] / 10000))
         vaccinations.append(vax_state_date[vax_state_date['state'] == state]['daily_full'].sum() / population.loc[population['state'] == state, 'pop'].values[0])
 
     cases_deaths_vaccinations = pd.DataFrame({"state": states, "cases": cases, "deaths": deaths, "vaccinations": vaccinations})
@@ -239,7 +249,7 @@ def app():
     cases_deaths_vaccinations['cluster'] = y_clusters
     centroids = km.cluster_centers_
 
-    threedimensionalclusters = px.scatter_3d(cases_deaths_vaccinations, x="cases", y="deaths", z="vaccinations", color="cluster")
+    threedimensionalclusters = px.scatter_3d(cases_deaths_vaccinations, x="cases", y="deaths", z="vaccinations", color="cluster", labels={"cases": "Cases Per 10k", "deaths": "Deaths Per 10k", "vaccinations": "Vaccination Rate"})
     st.plotly_chart(threedimensionalclusters)
 
     st.markdown('''
@@ -272,10 +282,10 @@ def app():
     deaths = []
 
     for state in states:
-        cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
-        deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum() / cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
-        # divide number of vaccinations by state population
+        cases.append((cases_state_date[cases_state_date['state'] == state]['cases_new'].sum()) / (population[population['state'] == state]['pop'].values[0] / 10000))
+        deaths.append((deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum()) / (population[population['state'] == state]['pop'].values[0] / 10000))
         vaccination_rates.append(vax_state_date[vax_state_date['state'] == state]['daily_full'].sum() / population.loc[population['state'] == state, 'pop'].values[0])
+
 
     cases_deaths_vaccinations = pd.DataFrame({"state": states, "deaths": deaths, "vaccination_rate": vaccination_rates})
 
@@ -293,7 +303,7 @@ def app():
     # put back state column
     cases_deaths_vaccinations['state'] = states
     cases_deaths_vaccinations['cluster'] = y_clusters
-    vaccination_deaths = px.scatter(cases_deaths_vaccinations, x="vaccination_rate", y="deaths", color="cluster", labels={"vaccination_rate": "Vaccination Rate", "deaths": "Death Rate"})
+    vaccination_deaths = px.scatter(cases_deaths_vaccinations, x="vaccination_rate", y="deaths", color="cluster", labels={"vaccination_rate": "Vaccination Rate", "deaths": "Deaths per 10k"})
 
     st.plotly_chart(vaccination_deaths)
 
@@ -301,17 +311,10 @@ def app():
     st.write(cases_deaths_vaccinations)
 
     st.markdown('''
-    We can see that throughout 2020, there are 0 vaccinations in all state since the vaccination campaign was yet to start. By February 2021, two states have begun their vaccination campaigns. It speeds up more rapidly by March and April, the vertical clusters start to spread out on the x-axis indicating higher vaccination numbers. In June 2021, there was a remarkable shoot where the y-axis scale completely changed. As of September 2021, the states that may require attention are those with low vaccination rates and high deaths, namely cluster 2, which contains the following states:
+    We can see that throughout 2020, there are 0 vaccinations in all state since the vaccination campaign was yet to start. By February 2021, two states have begun their vaccination campaigns. It speeds up more rapidly by March and April, the vertical clusters start to spread out on the x-axis indicating higher vaccination numbers. In June 2021, there was a remarkable shoot where the y-axis scale completely changed. As of September 2021, the states that may require attention are those with low vaccination rates and high deaths, namely the cluster which contains the following states:
 
-    * Melaka
-    * Negeri Sembilan
-    * Perlis
+    * Johor
+    * Kedah
+    * Pulau Pinang
     * Selangor
-    * W.P. Putrajaya
-
-    On the other hand, these are the states with relatively high vaccination rates w.r.t deaths:
-    * Sarawak
-    * W.P. Kuala Lumpur
-    * W.P. Labuan
     ''')
-
