@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-
 from seaborn.matrix import heatmap
 import streamlit as st
 import pandas as pd
@@ -31,11 +29,6 @@ def app():
 
     st.markdown("This exploration will conduct a comprehensive analysis of Covid-19 in Malaysia, while evaluating the performance of the nation in combatting the pandemic and putting this performance up against other countries in South East Asia. Covid-19 has taken the world by storm and we use open data to extract critical insights.")
 
-=======
-import streamlit as st
-
-def app():
->>>>>>> 0b7c6e04d66cf168663f568d6cf27ae5933026af
     # =============================================================================
     # LOADING DATA AND PREPROCESSING
     # =============================================================================
@@ -112,11 +105,7 @@ def app():
                                 'female_smokers','male_smokers','handwashing_facilities','hospital_beds_per_thousand','life_expectancy','human_development_index',
                                 'excess_mortality_cumulative_absolute','excess_mortality_cumulative','excess_mortality','excess_mortality_cumulative_per_million',
                                 ], inplace=True)
-<<<<<<< HEAD
     
-=======
-
->>>>>>> 0b7c6e04d66cf168663f568d6cf27ae5933026af
     st.markdown('''
     ## Exploratory Data Analysis
     Exploratory Data Analysis helps us obtain a statistical overview of the data and answer interesting questions to extract patterns that may exist.''')
@@ -433,9 +422,4 @@ def app():
 
     st.write('''
     Pfizer is the most used vaccine in Malaysia, followed by Sinovac and then Astrazeneca. If you observe the usage of Astrazeneca, it flails in comparison to the other two because it was opened up for voluntary registrations. Furthermore, unlike Pfizer and Sinovac, Astrazeneca usage does not show an upward trend and only has a few spikes, which may be linked to the times the government opens up registrations.
-<<<<<<< HEAD
     ''')
-=======
-    ''')
-
->>>>>>> 0b7c6e04d66cf168663f568d6cf27ae5933026af
