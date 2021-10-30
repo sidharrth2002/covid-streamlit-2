@@ -13,9 +13,6 @@ from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans, DBSCAN
 from urllib.error import URLError
-<<<<<<< HEAD
-from multiapp import MultiApp
-=======
 from PIL import Image
 from imblearn.over_sampling import SMOTE
 from sklearn.ensemble import RandomForestClassifier
@@ -38,20 +35,7 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import mean_squared_error,mean_absolute_error
 from sklearn.ensemble import RandomForestRegressor
 from boruta import BorutaPy
-
-
 # from pages import Clusteing, EDA # import your pages here
->>>>>>> 0b7c6e04d66cf168663f568d6cf27ae5933026af
-
-app = MultiApp()
-app.add_app("EDA", EDA)
-
-app.run()
-
-app = MultiPage()
-
-#app.add_page("Exploratory Data Analysis",EDA.app)
-#app.run()
 
 # =============================================================================
 # LOADING DATA AND PREPROCESSING
@@ -314,7 +298,6 @@ def cases_vax_corr(state, mode = 1,percentage = 0):
 
     return corr,vax_state_temp,state_merged
 
-<<<<<<< HEAD
 st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')
 
 corr_selangor1,vax_percentage_selangor1 = cases_vax_corr('Selangor',1)
@@ -323,8 +306,7 @@ corr_sabah1,vax_percentage_sabah1 = cases_vax_corr('Sabah',1)
 corr_sabah2,vax_percentage_sabah2 = cases_vax_corr('Sabah',2)
 corr_sarawak1,vax_percentage_sarawak1= cases_vax_corr('Sarawak',1)
 corr_sarawak2,vax_percentage_sarawak2= cases_vax_corr('Sarawak',2)
-=======
->>>>>>> 0b7c6e04d66cf168663f568d6cf27ae5933026af
+
 
 st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')
 corr_selangor1,vax_percentage_selangor1,selangor_state_merged1 = cases_vax_corr('Selangor',1)
@@ -351,12 +333,8 @@ table = pd.DataFrame(table, index =['Selangor','Sabah','Sarawak'])
 # Creates pandas DataFrame.
 st.dataframe(table)
 st.write('''
-<<<<<<< HEAD
-Based on the table, we can see that the correlation between vaccination and daily cases changes drastically in different periods of the vaccination campaign, showing no noticeable pattern.''')
-=======
 Based on the table, we can see that the correlation between vaccination and daily cases changes drastically in different periods of the vaccination campaign, showing no noticeable pattern. We can visualise the correlation plots at different periods of the vaccination campaign.
 ''')
->>>>>>> 0b7c6e04d66cf168663f568d6cf27ae5933026af
 
 fig2 = make_subplots(rows=3, cols=4, subplot_titles=('Full Period Selangor', 'Vax Rate > 0.05', 'Vax Rate > 0.10', 'Vax Rate > 0.15', 'Full Period Sabah', 'Vax Rate > 0.05', 'Vax Rate > 0.10', 'Vax Rate > 0.15', 'Full Period Sarawak', 'Vax Rate > 0.05', 'Vax Rate > 0.10', 'Vax Rate > 0.15'))
 fig2.add_trace(go.Scatter(x=selangor_state_merged1['cases_new'], y=selangor_state_merged1['daily_full'], mode='markers', line=go.scatter.Line(), name='Selangor All Days'), row=1, col=1)
