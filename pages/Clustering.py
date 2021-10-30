@@ -253,10 +253,10 @@ def app():
     st.plotly_chart(threedimensionalclusters)
 
     st.markdown('''
-    For the last month, there are 3 observable clusters:
-    1. Low Cases, Low Deaths and Low Vaccinations
-    2. High Cases, High Deaths and Low Vaccinations
-    3. Low Cases, Moderately High Deaths and High Vaccinations
+    For the last month, there are 3 observable clusters:\n
+    1. Low Cases, Low Deaths and Low Vaccinations\n
+    2. High Cases, High Deaths and Low Vaccinations\n
+    3. Low Cases, Moderately High Deaths and High Vaccinations\n
 
     Throughout 2020, vaccinations are 0 and hence, the clusters slowly start to expand in terms of cases and deaths. By 2021, the states have spread reasonably wide throughout the 3 dimensions and cases and deaths are at an all time high.
 

@@ -64,6 +64,8 @@ def app():
     trace_malaysia.fillna(0,inplace=True)
     trace_malaysia.drop_duplicates(inplace=True)
 
+    before_pp_cases_malaysia = cases_malaysia.copy()
+    before_pp_cases_state = cases_state.copy()
     # cluster columns are irrelevant, remove them
     cases_malaysia.drop(columns=['cluster_import', 'cluster_religious', 'cluster_community', 'cluster_highRisk', 'cluster_education', 'cluster_detentionCentre', 'cluster_workplace'], inplace=True)
     # other dates with a null value, just drop that row
@@ -74,6 +76,7 @@ def app():
     cases_state_pivoted = cases_state.pivot(index='date', columns='state', values='cases_new')
     clusters.drop_duplicates(inplace=True)
     deaths_malaysia.drop_duplicates(inplace=True)
+    before_pp_deaths_malaysia = deaths_malaysia.copy()
     deaths_malaysia.drop(columns=['deaths_bid', 'deaths_new_dod', 'deaths_bid_dod', 'deaths_pvax', 'deaths_fvax', 'deaths_tat'], inplace=True)
     deaths_state.drop_duplicates(inplace=True)
     deaths_state_pivoted = deaths_state.pivot(index='date', columns='state', values='deaths_new')
@@ -83,9 +86,11 @@ def app():
     icu.drop(columns=['beds_icu', 'beds_icu_rep', 'beds_icu_total', 'vent', 'vent_port', 'icu_pui','icu_noncovid','vent_pui','vent_noncovid','vent_used','vent_port_used'], inplace=True)
     pkrc.drop_duplicates(inplace=True)
     pkrc.drop(columns=['beds', 'admitted_pui', 'admitted_total', 'discharge_pui', 'discharge_total', 'pkrc_pui','pkrc_noncovid'], inplace=True)
+    before_pp_tests_malaysia = tests_malaysia.copy()
     tests_malaysia.drop_duplicates(inplace=True)
     tests_malaysia['total_testing'] = tests_malaysia['rtk-ag'] + tests_malaysia['pcr']
     tests_malaysia.drop(columns=['rtk-ag', 'pcr'], inplace=True)
+    before_pp_vax_malaysia = vax_malaysia.copy()
     vax_malaysia.drop_duplicates(inplace=True)
     vax_malaysia['cumul_vaccine'] = vax_malaysia['daily_full'].cumsum()
     vax_malaysia_all_attributes = vax_malaysia.copy()
