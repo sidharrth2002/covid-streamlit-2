@@ -1,0 +1,16 @@
+[1mdiff --git a/__pycache__/multipage.cpython-38.pyc b/__pycache__/multipage.cpython-38.pyc[m
+[1mindex 8a1bf5c..c2d002f 100644[m
+Binary files a/__pycache__/multipage.cpython-38.pyc and b/__pycache__/multipage.cpython-38.pyc differ
+[1mdiff --git a/app.py b/app.py[m
+[1mindex 3575538..eaa8a6d 100644[m
+[1m--- a/app.py[m
+[1m+++ b/app.py[m
+[36m@@ -143,6 +143,8 @@[m [mst.markdown("This exploration will conduct a comprehensive analysis of Covid-19[m
+ st.markdown('''[m
+ ## Spatially Mapped Covid-19 data[m
+ ''')[m
+[32m+[m[32mstate_locations = [][m
+[32m+[m
+ with open("./states_lat_lon.txt", "r") as f:[m
+     text = f.read()[m
+     for line in text.split("\n"):[m

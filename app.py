@@ -143,6 +143,8 @@ st.markdown("This exploration will conduct a comprehensive analysis of Covid-19 
 st.markdown('''
 ## Spatially Mapped Covid-19 data
 ''')
+state_locations = []
+
 with open("./states_lat_lon.txt", "r") as f:
     text = f.read()
     for line in text.split("\n"):

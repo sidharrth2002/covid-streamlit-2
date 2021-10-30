@@ -1,5 +1,7 @@
+from os import name
 from seaborn.matrix import heatmap
 import streamlit as st
+import numpy as np
 import pandas as pd
 import pydeck as pdk
 import plotly.express as px
@@ -17,9 +19,22 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from multipage import MultiPage
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
+from multipage import MultiPage
+from sklearn.metrics import classification_report, confusion_matrix, mean_squared_error
+import plotly.figure_factory as ff
+from tensorflow.keras.models import load_model
+from sklearn.svm import SVR
+from sklearn.feature_selection import SelectKBest, mutual_info_regression, RFE
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split  
+from sklearn.tree import DecisionTreeRegressor  
+from sklearn.metrics import mean_squared_error,mean_absolute_error
+from sklearn.ensemble import RandomForestRegressor
+from boruta import BorutaPy
 
 def app():
     # TITLE
@@ -115,7 +130,7 @@ def app():
     # Is there a correlation between the mean income of a state and the number of cases?
     # =============================================================================
     st.markdown('''
-    ### Mean Income vs States (with population)
+    ### Mean Income of State vs Cases (with population)
     This is a very miscellaneous question, is Covid related to the average income of a state? Are wealthier areas less affected by Covid? Each point on the graph is a state. The larger the bubble is, the more populated the state is.
     ''')
 
@@ -154,6 +169,32 @@ def app():
     From the regression plot, we can see that the relationship is not exactly linear. It forms more of a parabolic trend towards the beginning. Perhaps it takes a while for the effects of vaccination to kickin, as after a certain volume of vaccines are administered, the number of daily cases are on a daily trend.
     ''')
 
+    # ====================================
+    # Has vaccination helped reduce daily cases in Selangor, Sabah and Sarawak?
+    st.markdown('### Has the vaccination helped reduce daily cases in Selangor, Sabah and Sarawak?')
+
+    def vaccination_dailycases(state):
+        state_vax = vax_state[vax_state['state'] == state]
+        state_vax['cum'] = state_vax['daily_full'].cumsum()
+
+        state_cases = cases_state[cases_state['state'] == state]
+
+        state_merged = state_cases.merge(state_vax, on=['date'])
+
+        lineplot = px.line(state_merged, x='cum', y='cases_new', title=f'{state} Cumulative Vaccination vs Daily Cases')
+        st.write(lineplot)
+
+    vaccination_dailycases('Selangor')
+
+    vaccination_dailycases('Sabah')
+
+    vaccination_dailycases('Sarawak')
+
+    st.markdown('''
+    For Selangor and Sabah, there appears to be a curvilinear relationship between cumulative vaccinations and total cases. For the first period, there is a steady increase in cases. However, upon hitting a vaccination threshold, daily cases start to drop, which may be attributed to the effects of vaccination kicking in. Vaccinations have helped reduce daily cases in these two states.
+
+    For Sarawak however, there is an exponential increase in cases. We cannot conclude that vaccination has not been effective in this state. Instead, there may be confounding factors involved.
+    ''')
     # =============================================================================
     # Is there any correlation between vaccination and daily cases for Selangor, Sabah, Sarawak, and many more?
     # =============================================================================
@@ -181,6 +222,15 @@ def app():
         corr = state_merged[['daily_full', 'cases_new']].corr()
 
         return corr,vax_state_temp,state_merged
+
+    """st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')
+
+    corr_selangor1,vax_percentage_selangor1 = cases_vax_corr('Selangor',1)
+    corr_selangor2,vax_percentage_selangor2 = cases_vax_corr('Selangor',2)
+    corr_sabah1,vax_percentage_sabah1 = cases_vax_corr('Sabah',1)
+    corr_sabah2,vax_percentage_sabah2 = cases_vax_corr('Sabah',2)
+    corr_sarawak1,vax_percentage_sarawak1= cases_vax_corr('Sarawak',1)
+    corr_sarawak2,vax_percentage_sarawak2= cases_vax_corr('Sarawak',2)"""
 
 
     st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')

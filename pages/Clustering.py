@@ -1,5 +1,7 @@
+from os import name
 from seaborn.matrix import heatmap
 import streamlit as st
+import numpy as np
 import pandas as pd
 import pydeck as pdk
 import plotly.express as px
@@ -17,15 +19,24 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from multipage import MultiPage
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
+from multipage import MultiPage
+from sklearn.metrics import classification_report, confusion_matrix, mean_squared_error
+import plotly.figure_factory as ff
+from tensorflow.keras.models import load_model
+from sklearn.svm import SVR
+from sklearn.feature_selection import SelectKBest, mutual_info_regression, RFE
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split  
+from sklearn.tree import DecisionTreeRegressor  
+from sklearn.metrics import mean_squared_error,mean_absolute_error
+from sklearn.ensemble import RandomForestRegressor
+from boruta import BorutaPy
 
 def app():
-    # ====================================================================
-    # CLUSTERING
-    # ====================================================================
-
     # LOADING DATA AND PREPROCESSING
     # =============================================================================
     cases_malaysia = pd.read_csv('./cases/epidemic/cases_malaysia.csv')
@@ -101,7 +112,9 @@ def app():
                                 'female_smokers','male_smokers','handwashing_facilities','hospital_beds_per_thousand','life_expectancy','human_development_index',
                                 'excess_mortality_cumulative_absolute','excess_mortality_cumulative','excess_mortality','excess_mortality_cumulative_per_million',
                                 ], inplace=True)
-
+    # ====================================================================
+    # CLUSTERING
+    # ====================================================================
     st.markdown('''
     ## Clustering
     In this section, we will employ different clustering algorithms to see whether states suffering from Covid-19 form any visible patterns. 🦠
@@ -301,18 +314,4 @@ def app():
     * W.P. Kuala Lumpur
     * W.P. Labuan
     ''')
-<<<<<<< HEAD
-=======
 
-    st.markdown(''''
-    ## Regression
-    ''')
-    st.markdown('''
-        ### Can we predict the daily vaccination numbers?
-
-        The number of people being vaccinated daily can depend on a lot of factors
-        To answer this, we test:\n
-        1. Multivariate LSTM time-series analysis\n
-        2. Multivariate Support Vector Regression
-    ''')
->>>>>>> 0b7c6e04d66cf168663f568d6cf27ae5933026af

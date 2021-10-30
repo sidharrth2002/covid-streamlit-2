@@ -1,5 +1,7 @@
+from os import name
 from seaborn.matrix import heatmap
 import streamlit as st
+import numpy as np
 import pandas as pd
 import pydeck as pdk
 import plotly.express as px
@@ -17,9 +19,22 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from multipage import MultiPage
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVC
+from multipage import MultiPage
+from sklearn.metrics import classification_report, confusion_matrix, mean_squared_error
+import plotly.figure_factory as ff
+from tensorflow.keras.models import load_model
+from sklearn.svm import SVR
+from sklearn.feature_selection import SelectKBest, mutual_info_regression, RFE
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split  
+from sklearn.tree import DecisionTreeRegressor  
+from sklearn.metrics import mean_squared_error,mean_absolute_error
+from sklearn.ensemble import RandomForestRegressor
+from boruta import BorutaPy
 
 def app():
     # =============================================================================
@@ -145,7 +160,13 @@ def app():
         f1 = f1_score(y_test, rf.predict(X_test), average='weighted')
 
         st.write(f"Accuracy of Random Forest: {accuracy}")
-        st.write(f"F1-Score of Random Forest: {f1}")
+        st.write(f"Weighted Averaged F1-Score of Random Forest: {f1}")
+
+        y_pred = rf.predict(X_test)
+
+        # plot confusion matrix with plotly
+        cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred), x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred), colorscale='Viridis', showscale=True)
+        st.plotly_chart(cf)
 
     elif classification_model == 'Logistic Regression':
         log = LogisticRegression()
@@ -154,7 +175,13 @@ def app():
         f1 = f1_score(y_test, log.predict(X_test), average='weighted')
 
         st.write(f"Accuracy of Logistic Regression: {accuracy}")
-        st.write(f"F1-Score of Logistic Regression: {f1}")
+        st.write(f"Weighted Averaged F1-Score of Logistic Regression: {f1}")
+
+        # classification report
+        y_pred = log.predict(X_test)
+
+        # plot confusion matrix with plotly
+        cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
 
     else:
         gnb = GaussianNB()
@@ -164,60 +191,10 @@ def app():
         f1 = f1_score(y_test, gnb.predict(X_test), average='weighted')
 
         st.write(f"Accuracy of Naive Bayes: {accuracy}")
-        st.write(f"F1-Score of Naive Bayes: {f1}")
+        st.write(f"Weighted Averaged F1-Score of Naive Bayes: {f1}")
 
-    st.markdown('''
-    ### Can we predict the type of vaccine based on the symptoms?
+        # classification report
+        y_pred = gnb.predict(X_test)
 
-    Some vaccines produce more of a certain symptom than others. Hence, would it be possible to predict whether the vaccine is Pfizer, Sinovac, Astra, etc. based purely on the symptoms reported each day.
-
-    We use self-reported symptoms for each vaccine daily as the training data. Appropriate hyperparameter tuning is done using GridSearchCV for the Random Forest Classifier. Both Logistic Regression and the Support Vector Classifier are evaluated for this question using the metrics accuracy and weighted averaged F1-Score. The training set is SMOTE-d.
-
-    Feature selection (symptoms) is done using Recursive Feature Elimination.
-    ''')
-    vaccine_prediction = aefi.copy()
-    vaccine_prediction['vaxtype_label'] = LabelEncoder().fit_transform(vaccine_prediction['vaxtype'])
-    # recursive feature elimination
-    from sklearn.feature_selection import RFE
-    from sklearn.linear_model import LogisticRegression
-
-    X = vaccine_prediction.drop(columns=['date', 'vaxtype', 'vaxtype_label'])
-    y = vaccine_prediction['vaxtype_label']
-
-    logreg = LogisticRegression()
-    rfe = RFE(logreg, 20)
-    rfe = rfe.fit(X, y)
-
-    X_transformed = pd.DataFrame(rfe.transform(X), columns=X.columns[rfe.support_])
-    X_transformed
-
-    X_train, X_test, y_train, y_test = train_test_split(X_transformed, y, test_size=0.2, random_state=42)
-    smt = SMOTE(random_state=42, k_neighbors=3)
-    X_smt, y_smt = smt.fit_resample(X_train, y_train)
-
-    classification_model2 = st.selectbox('Which classification model do you want to test?', ['Logistic Regression', 'Support Vector Regression'])
-
-    if classification_model2 == 'Logistic Regression':
-        logreg = LogisticRegression()
-        logreg.fit(X_smt, y_smt)
-        accuracy = logreg.score(X_test, y_test)
-        f1 = f1_score(y_test, logreg.predict(X_test), average='weighted')
-        st.write(f"Accuracy of Logistic Regression: {accuracy}")
-        st.write(f"F1-Score of Logistic Regression: {f1}")
-
-    elif classification_model2 == 'Support Vector Regression':
-        # defining parameter range
-        param_grid = {'C': [0.1, 1, 10, 100, 1000],
-                    'gamma': [1, 0.1, 0.01, 0.001, 0.0001],
-                    'kernel': ['linear', 'rbf']}
-
-        grid = GridSearchCV(SVC(), param_grid, refit = True, verbose = 3)
-
-        # fitting the model for grid search
-        grid.fit(X_smt, y_smt)
-        svc = grid.best_estimator_
-        st.write(f'Best Model {svc}')
-        accuracy = svc.score(X_test, y_test)
-        f1 = f1_score(y_test, svc.predict(X_test), average='weighted')
-        st.write(f"Accuracy of Support Vector Regression: {accuracy}")
-        st.write(f"F1-Score of Support Vector Regression: {f1}")
+        # plot confusion matrix with plotly
+        cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
