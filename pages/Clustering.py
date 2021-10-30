@@ -301,3 +301,18 @@ def app():
     * W.P. Kuala Lumpur
     * W.P. Labuan
     ''')
+<<<<<<< HEAD
+=======
+
+    st.markdown(''''
+    ## Regression
+    ''')
+    st.markdown('''
+        ### Can we predict the daily vaccination numbers?
+
+        The number of people being vaccinated daily can depend on a lot of factors
+        To answer this, we test:\n
+        1. Multivariate LSTM time-series analysis\n
+        2. Multivariate Support Vector Regression
+    ''')
+>>>>>>> 0b7c6e04d66cf168663f568d6cf27ae5933026af

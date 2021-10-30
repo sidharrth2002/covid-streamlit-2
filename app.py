@@ -1,5 +1,7 @@
+from os import name
 from seaborn.matrix import heatmap
 import streamlit as st
+import numpy as np
 import pandas as pd
 import pydeck as pdk
 import plotly.express as px
@@ -9,14 +11,47 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn import preprocessing
 from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
 from urllib.error import URLError
+<<<<<<< HEAD
 from multiapp import MultiApp
+=======
+from PIL import Image
+from imblearn.over_sampling import SMOTE
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from multipage import MultiPage
+from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
+from multipage import MultiPage
+from sklearn.metrics import classification_report, confusion_matrix, mean_squared_error
+import plotly.figure_factory as ff
+from tensorflow.keras.models import load_model
+from sklearn.svm import SVR
+from sklearn.feature_selection import SelectKBest, mutual_info_regression, RFE
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split  
+from sklearn.tree import DecisionTreeRegressor  
+from sklearn.metrics import mean_squared_error,mean_absolute_error
+from sklearn.ensemble import RandomForestRegressor
+from boruta import BorutaPy
+
+
+# from pages import Clusteing, EDA # import your pages here
+>>>>>>> 0b7c6e04d66cf168663f568d6cf27ae5933026af
 
 app = MultiApp()
 app.add_app("EDA", EDA)
 
 app.run()
+
+app = MultiPage()
+
+#app.add_page("Exploratory Data Analysis",EDA.app)
+#app.run()
 
 # =============================================================================
 # LOADING DATA AND PREPROCESSING
@@ -39,7 +74,27 @@ population = pd.read_csv('./vaccination/static/population.csv')
 checkins = pd.read_csv('./cases/mysejahtera/checkin_malaysia.csv')
 income = pd.read_csv('./vaccination/static/income.csv')
 global_datasets =  pd.read_csv('./global_datasets/owid-covid-data.csv')
+aefi = pd.read_csv('./cases/vaccination/aefi.csv')
 trace_malaysia = pd.read_csv('./cases/mysejahtera/trace_malaysia.csv')
+
+before_pp_cases_malaysia = cases_malaysia.copy()
+before_pp_cases_state = cases_state.copy()
+before_pp_clusters = clusters.copy()
+before_pp_deaths_malaysia = deaths_malaysia.copy()
+before_pp_deaths_state = deaths_state.copy()
+before_pp_hospital = hospital.copy()
+before_pp_icu = icu.copy()
+before_pp_pkrc = pkrc.copy()
+before_pp_tests_malaysia = tests_malaysia.copy()
+before_pp_tests_state = tests_state.copy()
+before_pp_vax_malaysia = vax_malaysia.copy()
+before_pp_vax_state = vax_state.copy()
+before_pp_vaxreg_malaysia = vaxreg_malaysia.copy()
+before_pp_vaxreg_state = vaxreg_state.copy()
+before_pp_population = population.copy()
+before_pp_checkins = checkins.copy()
+before_pp_income = income.copy()
+
 trace_malaysia.fillna(0,inplace=True)
 trace_malaysia.drop_duplicates(inplace=True)
 
@@ -98,13 +153,7 @@ st.title("A Comprehensive Exploration of Covid-19 in Malaysia 🇲🇾")
 st.subheader("Sidharrth Nagappan, Eugene Kan, Tan Zhi Hang")
 st.image('./covid-malaysia.jpeg')
 
-st.markdown("This notebook will conduct a comprehensive analysis of Covid-19 in Malaysia, while evaluating the performance of the nation in combatting the pandemic and putting this performance up against other countries in South East Asia. Covid-19 has taken the world by storm and we use open data to extract critical insights.")
-
-st.markdown('''There are 3 parts to this notebook:\n
-            1. Preprocessing\n
-            2. Exploratory Data Analysis\n
-            3. Modeling\n
-            ''')
+st.markdown("This exploration will conduct a comprehensive analysis of Covid-19 in Malaysia, while evaluating the performance of the nation in combatting the pandemic and putting this performance up against other countries in South East Asia. Covid-19 has taken the world by storm and we use open data to extract critical insights.")
 
 # DISPLAY MAP WITH CASES AND DEATHS
 st.markdown('''
@@ -172,7 +221,7 @@ Exploratory Data Analysis helps us obtain a statistical overview of the data and
 # Is there a correlation between the mean income of a state and the number of cases?
 # =============================================================================
 st.markdown('''
-### Mean Income vs States (with population)
+### Mean Income of State vs Cases (with population)
 This is a very miscellaneous question, is Covid related to the average income of a state? Are wealthier areas less affected by Covid? Each point on the graph is a state. The larger the bubble is, the more populated the state is.
 ''')
 
@@ -195,9 +244,8 @@ There appears to be a weak correlation, hinting that Covid cases may not be a to
 # =============================================================================
 # prepare a generic function that calculates the cumulative sum of cases and percentage vaccinated for the whole nation
 st.markdown('''
-### Is there a correlation between vaccination and daily cases at a national level?
-
-We first obtain a new dataframe which only contains the date and the cummulative vaccination head count then we examine their correlation and visualize it using heatmap.''')
+### Vaccination vs Daily Cases (National)
+''')
 
 corr_vaccine = vax_malaysia[['date','cumul_vaccine']]
 malaysia_cases = cases_state[['date','state','cases_new']]
@@ -205,19 +253,51 @@ filtered_my_cases = malaysia_cases.groupby('date').sum().reset_index()
 merged_data_frame = pd.merge(filtered_my_cases, corr_vaccine, on=['date'])
 corr_merged_data_frame = merged_data_frame.corr()
 
-fig, ax = plt.subplots()
-sns.heatmap(corr_merged_data_frame, ax=ax)
-st.write(fig)
+fig = px.scatter(merged_data_frame, x='cumul_vaccine', y='cases_new', trendline='ols')
+st.plotly_chart(fig)
 
-st.write("From the heat map, we can see that the daily new cases positively correlate to each other. We plan to see the daily cases in each state but the result here is too confusing as we have 14 states. Hence we decided to plot out the graph individually to see the effect of the vaccine.")
+st.markdown('''
+From the regression plot, we can see that the relationship is not exactly linear. It forms more of a parabolic trend towards the beginning. Perhaps it takes a while for the effects of vaccination to kickin, as after a certain volume of vaccines are administered, the number of daily cases are on a daily trend.
+''')
+
+# ====================================
+# Has vaccination helped reduce daily cases in Selangor, Sabah and Sarawak?
+st.markdown('### Has the vaccination helped reduce daily cases in Selangor, Sabah and Sarawak?')
+
+def vaccination_dailycases(state):
+    state_vax = vax_state[vax_state['state'] == state]
+    state_vax['cum'] = state_vax['daily_full'].cumsum()
+
+    state_cases = cases_state[cases_state['state'] == state]
+
+    state_merged = state_cases.merge(state_vax, on=['date'])
+
+    lineplot = px.line(state_merged, x='cum', y='cases_new', title=f'{state} Cumulative Vaccination vs Daily Cases')
+    st.write(lineplot)
+
+vaccination_dailycases('Selangor')
+
+vaccination_dailycases('Sabah')
+
+vaccination_dailycases('Sarawak')
+
+st.markdown('''
+For Selangor and Sabah, there appears to be a curvilinear relationship between cumulative vaccinations and total cases. For the first period, there is a steady increase in cases. However, upon hitting a vaccination threshold, daily cases start to drop, which may be attributed to the effects of vaccination kicking in. Vaccinations have helped reduce daily cases in these two states.
+
+For Sarawak however, there is an exponential increase in cases. We cannot conclude that vaccination has not been effective in this state. Instead, there may be confounding factors involved.
+''')
 # =============================================================================
 # Is there any correlation between vaccination and daily cases for Selangor, Sabah, Sarawak, and many more?
 # =============================================================================
 # prepare a generic function that calculates the cumulative sum of cases and percentage vaccinated for each state
-st.markdown(''''
-### Vaccination vs Daily Cases
+st.markdown('''
+### If daily cases increases, does that also increase the number of people getting vaccinated on a daily basis?
+#### Does the government put more effort into the vaccination campaign when cases spike?
 A naive way to answer this question is to find the correlation across the entire pandemic, but this does not take into account the time for the vaccines to start showing their effects. We try calculating the correlations only after a certain percentage of the population has been vaccinated.''')
-def cases_vax_corr(state, mode = 1):
+
+# prepare a generic function that calculates the cumulative sum of cases and percentage vaccinated for each state with the option
+# to remove a certain percentage of the data before doing so (something like alpha trimming)
+def cases_vax_corr(state, mode = 1,percentage = 0):
     vax_state_temp = vax_state.copy()
     vax_state_temp = vax_state_temp[vax_state_temp['state'] == state]
     population_state = population[population['state'] == state]['pop'].iloc[0]
@@ -226,14 +306,15 @@ def cases_vax_corr(state, mode = 1):
 
     state_cases = cases_state[cases_state['state'] == state]
     if mode == 2 :
-        date = vax_state_temp[vax_state_temp['percentage_vaccinated'] >= 0.1]['date'].iloc[0]
+        date = vax_state_temp[vax_state_temp['percentage_vaccinated'] >= percentage]['date'].iloc[0]
         state_cases = cases_state[cases_state['date'] >= date]
     state_vax = vax_state[vax_state['state'] == state]
     state_merged = state_cases.merge(state_vax, on='date')
-    corr = state_merged[['daily', 'cases_new']].corr()
-    return corr,vax_state_temp
+    corr = state_merged[['daily_full', 'cases_new']].corr()
 
+    return corr,vax_state_temp,state_merged
 
+<<<<<<< HEAD
 st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')
 
 corr_selangor1,vax_percentage_selangor1 = cases_vax_corr('Selangor',1)
@@ -242,28 +323,71 @@ corr_sabah1,vax_percentage_sabah1 = cases_vax_corr('Sabah',1)
 corr_sabah2,vax_percentage_sabah2 = cases_vax_corr('Sabah',2)
 corr_sarawak1,vax_percentage_sarawak1= cases_vax_corr('Sarawak',1)
 corr_sarawak2,vax_percentage_sarawak2= cases_vax_corr('Sarawak',2)
+=======
+>>>>>>> 0b7c6e04d66cf168663f568d6cf27ae5933026af
 
-table = {'Full Period':[corr_selangor1['daily']['cases_new'], corr_sabah1['daily']['cases_new'], corr_sarawak1['daily']['cases_new']],
-        'When Vacinated Rate Over 0.1':[corr_selangor2['daily']['cases_new'], corr_sabah2['daily']['cases_new'], corr_sarawak2['daily']['cases_new']]}
+st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')
+corr_selangor1,vax_percentage_selangor1,selangor_state_merged1 = cases_vax_corr('Selangor',1)
+corr_selangor2,vax_percentage_selangor2,selangor_state_merged2 = cases_vax_corr('Selangor',2,0.05)
+corr_selangor3,vax_percentage_selangor3,selangor_state_merged3 = cases_vax_corr('Selangor',2,0.10)
+corr_selangor4,vax_percentage_selangor4,selangor_state_merged4 = cases_vax_corr('Selangor',2,0.15)
+corr_sabah1,vax_percentage_sabah1,sabah_state_merged1 = cases_vax_corr('Sabah',1)
+corr_sabah2,vax_percentage_sabah2,sabah_state_merged2 = cases_vax_corr('Sabah',2,0.05)
+corr_sabah3,vax_percentage_sabah3,sabah_state_merged3 = cases_vax_corr('Sabah',2,0.15)
+corr_sabah4,vax_percentage_sabah4,sabah_state_merged4 = cases_vax_corr('Sabah',2,0.2)
+corr_sarawak1,vax_percentage_sarawak1,sarawak_state_merged1= cases_vax_corr('Sarawak',1)
+corr_sarawak2,vax_percentage_sarawak2,sarawak_state_merged2= cases_vax_corr('Sarawak',2,0.05)
+corr_sarawak3,vax_percentage_sarawak3,sarawak_state_merged3= cases_vax_corr('Sarawak',2,0.15)
+corr_sarawak4,vax_percentage_sarawak4,sarawak_state_merged4= cases_vax_corr('Sarawak',2,0.2)
+
+table = {'Full Period':[corr_selangor1['daily_full']['cases_new'], corr_sabah1['daily_full']['cases_new'], corr_sarawak1['daily_full']['cases_new']],
+        'When Vacinated Rate Over 0.05':[corr_selangor2['daily_full']['cases_new'], corr_sabah2['daily_full']['cases_new'], corr_sarawak2['daily_full']['cases_new']],
+        'When Vacinated Rate Over 0.10':[corr_selangor3['daily_full']['cases_new'], corr_sabah3['daily_full']['cases_new'], corr_sarawak3['daily_full']['cases_new']],
+        'When Vacinated Rate Over 0.15':[corr_selangor4['daily_full']['cases_new'], corr_sabah4['daily_full']['cases_new'], corr_sarawak4['daily_full']['cases_new']]}
 
 # Creates pandas DataFrame.
 table = pd.DataFrame(table, index =['Selangor','Sabah','Sarawak'])
+
+# Creates pandas DataFrame.
 st.dataframe(table)
 st.write('''
+<<<<<<< HEAD
 Based on the table, we can see that the correlation between vaccination and daily cases changes drastically in different periods of the vaccination campaign, showing no noticeable pattern.''')
+=======
+Based on the table, we can see that the correlation between vaccination and daily cases changes drastically in different periods of the vaccination campaign, showing no noticeable pattern. We can visualise the correlation plots at different periods of the vaccination campaign.
+''')
+>>>>>>> 0b7c6e04d66cf168663f568d6cf27ae5933026af
 
-fig = make_subplots(specs=[[{"secondary_y": True}]])
-fig.add_trace(go.Line(x=vax_percentage_selangor1['date'], y=vax_percentage_selangor1['percentage_vaccinated'], name='Selangor'), secondary_y=False)
-fig.add_trace(go.Line(x=vax_percentage_sabah1['date'], y=vax_percentage_sabah1['percentage_vaccinated'], name='Sabah'), secondary_y=False)
-fig.add_trace(go.Line(x=vax_percentage_sarawak1['date'], y=vax_percentage_sarawak1['percentage_vaccinated'], name='Sarawak'), secondary_y=False)
-st.plotly_chart(fig)
+fig2 = make_subplots(rows=3, cols=4, subplot_titles=('Full Period Selangor', 'Vax Rate > 0.05', 'Vax Rate > 0.10', 'Vax Rate > 0.15', 'Full Period Sabah', 'Vax Rate > 0.05', 'Vax Rate > 0.10', 'Vax Rate > 0.15', 'Full Period Sarawak', 'Vax Rate > 0.05', 'Vax Rate > 0.10', 'Vax Rate > 0.15'))
+fig2.add_trace(go.Scatter(x=selangor_state_merged1['cases_new'], y=selangor_state_merged1['daily_full'], mode='markers', line=go.scatter.Line(), name='Selangor All Days'), row=1, col=1)
+fig2.add_trace(go.Scatter(x=selangor_state_merged2['daily'], y=selangor_state_merged2['daily_full'], mode='markers', line=go.scatter.Line(), name='Selangor after reaching 5% vaccination'), row=1, col=2)
+fig2.add_trace(go.Scatter(x=selangor_state_merged3['daily'], y=selangor_state_merged3['daily_full'], mode='markers', line=go.scatter.Line(), name='Selangor after reaching 10% vaccination'), row=1, col=3)
+fig2.add_trace(go.Scatter(x=selangor_state_merged4['cases_new'], y=selangor_state_merged4['daily_full'], mode='markers', line=go.scatter.Line(), name='Selangor after reaching 15% vaccination'), row=1, col=4)
+fig2.add_trace(go.Scatter(x=sabah_state_merged1['cases_new'], y=sabah_state_merged1['daily_full'], mode='markers', line=go.scatter.Line(), name='Sabah All Days'), row=2, col=1)
+fig2.add_trace(go.Scatter(x=sabah_state_merged2['cases_new'], y=sabah_state_merged2['daily_full'], mode='markers', line=go.scatter.Line()), row=2, col=2)
+fig2.add_trace(go.Scatter(x=sabah_state_merged3['cases_new'], y=sabah_state_merged3['daily_full'], mode='markers', line=go.scatter.Line()), row=2, col=3)
+fig2.add_trace(go.Scatter(x=sabah_state_merged4['cases_new'], y=sabah_state_merged4['daily_full'], mode='markers', line=go.scatter.Line()), row=2, col=4)
+fig2.add_trace(go.Scatter(x=sarawak_state_merged1['cases_new'], y=sarawak_state_merged1['daily_full'], mode='markers', line=go.scatter.Line()), row=3, col=1)
+fig2.add_trace(go.Scatter(x=sarawak_state_merged2['cases_new'], y=sarawak_state_merged2['daily_full'], mode='markers', line=go.scatter.Line()), row=3, col=2)
+fig2.add_trace(go.Scatter(x=sarawak_state_merged3['cases_new'], y=sarawak_state_merged3['daily_full'], mode='markers', line=go.scatter.Line()), row=3, col=3)
+fig2.add_trace(go.Scatter(x=sarawak_state_merged4['cases_new'], y=sarawak_state_merged4['daily_full'], mode='markers', line=go.scatter.Line()), row=3, col=4)
+fig2.update_layout(height=800, width=800, title_text="Daily Cases vs. Daily Vaccination Numbers", showlegend=False)
+st.plotly_chart(fig2)
+
+st.markdown('''
+If we look at the vaccination campaign of the state as a whole, there is a correlation between daily cases and vaccination numbers. However, if you zoom into different periods of the campaign (after hitting 5%, 10% and 15% vaccination rates), there is no pattern between daily cases and daily vaccinations. Regardless of whether cases up or down, the government still continues administering vaccines.
+''')
 
 # =============================================================================
 # Which states have been most affected by Covid clusters?
 # =============================================================================
 import re
 
-st.markdown('### Which states have been most affected by Covid clusters?')
+st.markdown("""
+### Which states have been most affected by Covid clusters?'
+#### May it be Kluster Mahkamah, Court Cluster, Kluster Mamak, etc.
+"""
+)
 
 def get_iqr_values(df_in, col_name):
     median = df_in[col_name].median()
@@ -284,7 +408,9 @@ clusters_singlestate = clusters.explode('single_state')
 clusters_singlestate = clusters_singlestate[clusters_singlestate['single_state'].isin(['Wp Kuala Lumpur', 'Wp Putrajaya', 'Selangor', 'Negeri Sembilan', 'Pahang', 'Johor', 'Sarawak', 'Kedah', 'Perak', 'Kelantan'])]
 st.plotly_chart(px.box(clusters_singlestate, x='single_state', y='cases_total'))
 st.markdown('''
-We can see from the boxplot that the majority of Covid Clusters are small, while there exists some large scale clusters in each state. In this case, to get a more meaningful idea of the drasticity of the majority of outliers, we will first remove the outliers. If we compare the boxplot with and without outliers, we can see that the majority of clusters are quite small, often under 100 cases. Just because a state is big does not mean that there are many cases that are due to Covid clusters. In this case, Negeri Sembilan seems to be the state most affected by individual clusters. Some Covid clusters also span across multiple states.
+We can see from the boxplot that the majority of Covid Clusters are moderately sized, often under 100 cases per cluster. However, there does exist unusually large clusters that appear as outliers.
+
+In this case, to get a more meaningful idea of "ordinary" clusters alone, we remove the outliers and show a new boxplot. Surprisingly, Negeri Sembilan and Perak are most affected by clusters, as opposed to more populated states like Selangor or Kuala Lumpur.
 ''')
 clusters_singlestate = remove_outliers(clusters_singlestate, 'cases_total')
 st.plotly_chart(px.box(clusters_singlestate, x='single_state', y='cases_total', points=False))
@@ -296,7 +422,9 @@ Across the country, clusters form in schools, workplaces, places of worship, etc
 
 st.plotly_chart(px.box(clusters_singlestate, x='category', y='cases_total'))
 st.markdown('''
-The detention centers generally have the largest Covid clusters, with a strong right skew. The rest of the cluster categories have mostly small clusters, but quite a few unusually large clusters. This is especially for the workplace clusters. For instance, most companies/organisations in Malaysia are small, so there may be a lot of clusters, but only some are large enought to appear as an outlier.
+The detention centers generally have the largest Covid clusters, with a strong right skew. The rest of the cluster categories have mostly small clusters, but as we observed in the earlier question, there are quite a few unusually large clusters.
+
+An interesting example is workplace clusters. For instance, most companies/organisations in Malaysia are small, so there may be a **high frequency** of clusters, but only some are **large enough** to appear as an outlier. Case in point, Top Glove.
 ''')
 
 # =============================================================================
@@ -343,12 +471,16 @@ fig.update_layout(title_text='Vaccination Campaigns Across ASEAN', xaxis_title='
 st.plotly_chart(fig)
 
 st.markdown('''
-The line graph above shows that the vaccination rate for each country in South-East Asia. Based on the result, we can see that Cambodia has the highest vaccinated rate compared to other countries and Myanmar have the lowest vaccinated rate which is near zero. For Malaysia, we ranked top 3 in the graph and the vaccinated rate is near 45%. Hence, we can conclude that Malaysia's vaccination campaign is doing better than the majority of South-East Asia's countries.
+The line graph above shows that the vaccination rate for each country in South-East Asia. Based on the result, we can see that Cambodia has the highest vaccination rate compared to other countries. For Malaysia, we ranked top 3 in the graph and the vaccinated rate is near 45%. Hence, we can conclude that Malaysia's vaccination campaign is doing better than the majority of South-East Asia's countries.
+
+**Note: Percentages are on the low end maybe because this dataset is a few weeks old. When countries are vaccinating thousands a day, the percentage will be higher.**
+
+Even still, Malaysia is doing statistically better than other ASEAN nations.
 '''
 )
 
 st.markdown('''
-### Is there a link between casual contacts and the number of daily cases? Can we classify how contagious Covid is?
+### Is there a correlation between individual casual contacts (contact tracing) and daily cases? If the link is strong, how contagious is Covid-19?
 ''')
 temp_cases_malaysia = cases_malaysia.copy()
 temp_trace_malaysia = trace_malaysia.copy()
@@ -356,12 +488,12 @@ merged = temp_cases_malaysia.merge(temp_trace_malaysia, on='date')
 corr = merged[['casual_contacts', 'cases_new']].corr()
 st.plotly_chart(px.scatter(merged, x='casual_contacts', y='cases_new', trendline='ols'))
 st.markdown('''
-    We can see that case_new is highly correlated with casual_contacts so I mean that there is a link between the cases_new and casual_contact. If more people go out and get infected, the number of cases will increase.
+    Based on both the regression plot, we can see that daily new cases are highly correlated with the number of casual contacts for the day. As in, if more people go out and come in close contact with infected people, the number of cases increases. The statistics fall in line with the science behind Covid-19 🦠.
 ''')
+st.image(Image.open('./social-distancing.gif'), width=300)
 
 st.markdown('''
-### How has the vaccination rate changed over time across states?
-We first obtain a new dataframe which only contains the date and the cummulative vaccination head count then we examine their correlation and visualize it using heatmap.
+### How have vaccination numbers changed over time across states?
 ''')
 corr_vaccine = vax_malaysia[['date', 'cumul_vaccine']].copy()
 malaysia_cases = cases_state[['date','state','cases_new']]
@@ -380,24 +512,25 @@ scaled_df['state'] = merged_vax_state['state']
 
 fig, axes = plt.subplots(3, 2, figsize=(20,20))
 
-#scaled_df[scaled_df['state']==i]['date'],
 for index, i in enumerate(states):
     ax = fig.add_subplot(3, 2, index + 1)
     ax.plot(scaled_df[scaled_df['state']==i]['date'],scaled_df[scaled_df['state']==i]['daily_full'],label = "Vaccination Rate (%)")
     ax.plot(scaled_df[scaled_df['state']==i]['date'],scaled_df[scaled_df['state']==i]['cases_new'],label = "Daily New Cases")
     plt.xticks(rotation=90)
-    plt.title(i + ' Vaccination Rate and Daily Cases')
+    plt.title(i + ' Daily Vaccination and Daily Cases')
     plt.xlabel('Date')
     plt.ylabel('Normalized quantity')
     leg = plt.legend(loc='upper left')
 
 st.pyplot(fig)
+
 st.markdown('''
-We first normalize both the vaccination rate(%) and the daily new cases of covid cases to see if there's any effect of vaccination. We specifically look at the top 5 states that require more attention( Melaka, Negeri Sembilan, Perlis, Selangor and W.P. Putrajaya) that we found out that have low vaccination rate in the earlier finding. As we can see from the line graph that we plot out, it is clear that when the government put more effort into getting the people vaccinated in that certain state, the daily cases would start to decline, except for Perlis. Perlis's daily cases spikes up a little in October 2021 but not drastically. We can safely assume that vaccination actually in a way help controlling the cluster cases in Perlis without going higher. Regardless, we can conclude that vaccination might be one of the contributing factor to reduce daily covid cases in Malaysia. However, more research is needed in order to conclude this finding.
+We specifically look at the top 5 states that require more attention( Melaka, Negeri Sembilan, Perlis, Selangor and W.P. Putrajaya) that we found out that have low vaccination rate in the earlier finding. As we can see from the line graph that we plot out, it is clear that when the government put more effort into getting the people vaccinated in that certain state, the daily cases would start to decline, except for Perlis. Perlis's daily cases spikes up a little in October 2021 but not drastically. We can safely assume that vaccination actually in a way help controlling the cluster cases in Perlis without going higher. Regardless, we can conclude that vaccination might be one of the contributing factor to reduce daily covid cases in Malaysia. However, more research is needed in order to conclude this finding.
 ''')
 
 st.markdown('''
 ### How has the vaccination rate changed across the nation?
+This is a simple question, but the progression of vaccination is an interesting phenonemon to explore.
 ''')
 vax_pop_percentage = vax_malaysia['cumul_vaccine']
 vax_pop_percentage = pd.DataFrame(vax_pop_percentage)
@@ -405,9 +538,12 @@ vax_pop_percentage['percentage'] = vax_pop_percentage.apply(lambda x: (vax_malay
 vax_pop_percentage['date'] = pd.to_datetime(vax_malaysia['date'])
 
 st.plotly_chart(px.line(vax_pop_percentage, x='date', y='percentage', labels={'date':'Date', 'percentage':'Vaccination Rate (%)'}))
+st.write(''''
+If we consider the population of Malaysia as a whole, we have just crossed the 60% vaccination threshold. There does seem to be a slow start, but the speed of the campaign has picked up.
+''')
 
 st.markdown('''
-### Vaccine Distribution Modelling
+### Vaccine 💉 Distribution Modelling
 ''')
 
 fig = make_subplots(specs=[[{"secondary_y": True}]])
@@ -418,6 +554,12 @@ fig.add_trace(go.Line(x=vax_malaysia_all_attributes['date'], y=vax_malaysia_all_
 fig.update_layout(title='Vaccine brand usage over time')
 st.plotly_chart(fig)
 
+st.write('''
+At the start of the campaign, MoH was primarily using Pfizer, but by June, Sinovac would rapidly overtake Pfizer to become the most used vaccine. Adoption of Sinovac however drops, but people still do come back for their second dose.
+''')
+
+st.image(Image.open('./sinovac-phaseout.png'), width=400)
+
 vaccine_totals = pd.DataFrame(vax_malaysia_all_attributes[['pfizer', 'astra', 'sinovac']].sum().reset_index())
 vaccine_totals.columns = ['vaccine', 'total']
 
@@ -426,7 +568,7 @@ vaccines_pie = px.pie(vaccine_totals, values='total', names='vaccine', title='Va
 st.plotly_chart(vaccines_pie)
 
 st.write('''
-Pfizer is the most used vaccine in Malaysia, followed by Sinovac and then Astrazeneca. If you observe the usage of Astrazeneca, it flails in comparison to the other two because it was opened up for voluntary registrations. Furthermore, unlike Pfizer and Sinovac, Astrazeneca usage does not show an upward trend and only has a few spikes, which may be attributed to the government opening up registrations.
+Pfizer is the most used vaccine in Malaysia, followed by Sinovac and then Astrazeneca. If you observe the usage of Astrazeneca, it flails in comparison to the other two because it was opened up for voluntary registrations. Furthermore, unlike Pfizer and Sinovac, Astrazeneca usage does not show an upward trend and only has a few spikes, which may be linked to the times the government opens up registrations.
 ''')
 
 # ====================================================================
@@ -434,18 +576,19 @@ Pfizer is the most used vaccine in Malaysia, followed by Sinovac and then Astraz
 # ====================================================================
 st.markdown('''
 ## Clustering
-In this section, we will employ different clustering algorithms to see whether
-states suffering from Covid-19 form any visible patterns. 🦠
+In this section, we will employ different clustering algorithms to see whether states suffering from Covid-19 form any visible patterns. 🦠
 ''')
 
 st.markdown('''
 ### How did the clusters change over time with respect to cases and deaths? Did some states reorganise into new clusters?
 ''')
 states = ['Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang', 'Perak', 'Perlis', 'Pulau Pinang', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu', 'W.P. Kuala Lumpur', 'W.P. Labuan', 'W.P. Putrajaya']
-dates = ['2020-02-01', '2020-03-01', '2020-04-01', '2020-05-01', '2020-06-01', '2020-07-01', '2020-08-01', '2020-09-01', '2020-10-01', '2020-11-01', '2020-12-01', '2021-01-01', '2021-02-01', '2021-03-01', '2021-04-01', '2021-05-01', '2021-06-01', '2021-07-01', '2021-08-01']
+dates = ['2020-02-01', '2020-03-01', '2020-04-01', '2020-05-01', '2020-06-01', '2020-07-01', '2020-08-01', '2020-09-01', '2020-10-01', '2020-11-01', '2020-12-01', '2021-01-01', '2021-02-01', '2021-03-01', '2021-04-01', '2021-05-01', '2021-06-01', '2021-07-01', '2021-08-01', '2021-09-01', '2021-10-01']
 ranges_1 = [(dates[i], dates[i+1]) for i in range(len(dates)-1)]
 
-date_range_2d = st.select_slider('Slide to see the clusters moving through time using temporal K-Means clustering.', options=ranges_1, key='2d')
+date_range_2d = st.select_slider('Slide to see the clusters moving through time using **temporal clustering**.', options=ranges_1, key='2d')
+
+st.markdown('#### K-Means')
 
 cases_state_date = cases_state[(cases_state['date'] >= date_range_2d[0]) & (cases_state['date'] < date_range_2d[1])]
 deaths_state_date = deaths_state[(deaths_state['date'] >= date_range_2d[0]) & (deaths_state['date'] < date_range_2d[1])]
@@ -474,21 +617,55 @@ centroids = km.cluster_centers_
 twodimensionalclusters = px.scatter(cases_deaths_vaccinations, x="cases", y="deaths", color="cluster")
 st.plotly_chart(twodimensionalclusters)
 
+st.markdown('#### DBSCAN')
+
+cases_state_date = cases_state[(cases_state['date'] >= date_range_2d[0]) & (cases_state['date'] < date_range_2d[1])]
+deaths_state_date = deaths_state[(deaths_state['date'] >= date_range_2d[0]) & (deaths_state['date'] < date_range_2d[1])]
+
+cases = []
+vaccinations = []
+deaths = []
+
+for state in states:
+    cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
+    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum())
+
+cases_deaths_vaccinations = pd.DataFrame({"state": states, "cases": cases, "deaths": deaths})
+
+for col in cases_deaths_vaccinations:
+    if cases_deaths_vaccinations[col].dtype != 'object':
+        cases_deaths_vaccinations[col] = StandardScaler().fit_transform(cases_deaths_vaccinations[[col]])
+
+cases_deaths_vaccinations.drop(columns=['state'], inplace=True)
+X_std = cases_deaths_vaccinations
+
+dbscan = DBSCAN(eps=0.5, min_samples=1).fit(cases_deaths_vaccinations)
+y_clusters = dbscan.fit_predict(cases_deaths_vaccinations)
+
+cases_deaths_vaccinations['cluster'] = y_clusters
+
+dbscanclusters = px.scatter(cases_deaths_vaccinations, x="cases", y="deaths", color="cluster")
+st.plotly_chart(dbscanclusters)
+
 st.markdown('''
+#### Analysis up until September 2021-October 2021
 We can observe that in the beginning, the majority of the clusters were positioned towards the bottom left and they maintain a similar pattern until about August 2020. In August, the cases were still high but there were fewer deaths, which may signify that the situation was improving, besides the one state that is in the upper corner of the plot that stands out from the rest. Around December, the bottom-right cluster begins to break up and states start moving diagonally upwards in the graph, meaning higher number of deaths and more cases. By September 2021, the states fall in a sort of straight diagonal line, with the performance of states spread across the spectrum from mild to serious.
+
+If a state has high cases and low deaths, that shows the effectiveness of the vaccination campaign. This is because vaccines have been known to reduce the seriousness of cases. Evidently, as the vaccination campaign begins around the start of April, cluster points start to move mainly horizontally (smaller increase in deaths).
+
 **We also set out to find that one state that created a cluster of it's own throughout and it was Selangor, to no one's surprise.**
 ''')
 
 
 st.markdown('''
-### How do clusters change over time with respect to cases, deaths and vaccinations? Did some states reorganise into different clusters?
+### How do clusters change over time with respect to cases, deaths and vaccinations (**third factor**)? Did some states reorganise into different clusters?
 
 This time, let's bring in a third variable- vaccinations.
 ''')
 
 nrows = 5
 ncols = 4
-dates = ['2020-02-01', '2020-03-01', '2020-04-01', '2020-05-01', '2020-06-01', '2020-07-01', '2020-08-01', '2020-09-01', '2020-10-01', '2020-11-01', '2020-12-01', '2021-01-01', '2021-02-01', '2021-03-01', '2021-04-01', '2021-05-01', '2021-06-01', '2021-07-01', '2021-08-01']
+dates = ['2020-02-01', '2020-03-01', '2020-04-01', '2020-05-01', '2020-06-01', '2020-07-01', '2020-08-01', '2020-09-01', '2020-10-01', '2020-11-01', '2020-12-01', '2021-01-01', '2021-02-01', '2021-03-01', '2021-04-01', '2021-05-01', '2021-06-01', '2021-07-01', '2021-08-01', '2021-09-01', '2021-10-01']
 ranges_2 = [(dates[i], dates[i+1]) for i in range(len(dates)-1)]
 
 date_range = st.select_slider('Slide to see the clusters moving through time using temporal K-Means clustering.', options=ranges_2, key='3d')
@@ -506,7 +683,7 @@ states = ['Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang', '
 for state in states:
     cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
     deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum())
-    vaccinations.append(vax_state_date[vax_state_date['state'] == state]['daily_full'].sum())
+    vaccinations.append(vax_state_date[vax_state_date['state'] == state]['daily_full'].sum() / population.loc[population['state'] == state, 'pop'].values[0])
 
 cases_deaths_vaccinations = pd.DataFrame({"state": states, "cases": cases, "deaths": deaths, "vaccinations": vaccinations})
 for col in cases_deaths_vaccinations:
@@ -525,14 +702,23 @@ threedimensionalclusters = px.scatter_3d(cases_deaths_vaccinations, x="cases", y
 st.plotly_chart(threedimensionalclusters)
 
 st.markdown('''
-We maintain that states can be grouped into 3 clusters. Throughout 2020, vaccinations are 0 and hence, the clusters slowly start to expand in terms of cases and deaths. By 2021, the states have spread reasonably wide throughout the 3 dimensions. By early 2021, cases and deaths are at an all time high. Around this time, vaccination begins and clusters start moving higher in that dimension. However, even in September, there is one cluster of states with relatively low vaccinations.
+For the last month, there are 3 observable clusters:
+1. Low Cases, Low Deaths and Low Vaccinations
+2. High Cases, High Deaths and Low Vaccinations
+3. Low Cases, Moderately High Deaths and High Vaccinations
+
+Throughout 2020, vaccinations are 0 and hence, the clusters slowly start to expand in terms of cases and deaths. By 2021, the states have spread reasonably wide throughout the 3 dimensions and cases and deaths are at an all time high.
+
+Around this time, vaccination begins and clusters start moving higher in the "vaccination" dimension. As most states move vertically upward in the dimension, there are still a cluster of states with low vaccination rates.
+
+By October 2021, most states are on the upper end of the vaccination spectrum, the lower end of the deaths spectrum, but cases are still spread wide across. This may not be too consequential, because the fact that an increase in cases did not lead to an increase deaths shows the effect of the 💉 campaign.
 ''')
 
 st.markdown('''
 ### Which states require attention in terms of their vaccination campaign and deaths (relatively)?
 ''')
 
-dates = ['2021-01-01', '2021-02-01', '2021-03-01', '2021-04-01', '2021-05-01', '2021-06-01', '2021-07-01', '2021-08-01']
+dates = ['2021-01-01', '2021-02-01', '2021-03-01', '2021-04-01', '2021-05-01', '2021-06-01', '2021-07-01', '2021-08-01', '2021-09-01', '2021-10-01']
 ranges_3 = [(dates[i], dates[i+1]) for i in range(len(dates)-1)]
 date_range = st.select_slider('Slide to see the clusters moving through time using temporal K-Means clustering.', options=ranges_3, key='vaccination_and_deaths')
 
@@ -546,19 +732,20 @@ deaths = []
 
 for state in states:
     cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
-    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum() / population.loc[population['state'] == state, 'pop'].values[0])
+    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum() / cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
     # divide number of vaccinations by state population
     vaccination_rates.append(vax_state_date[vax_state_date['state'] == state]['daily_full'].sum() / population.loc[population['state'] == state, 'pop'].values[0])
 
 cases_deaths_vaccinations = pd.DataFrame({"state": states, "deaths": deaths, "vaccination_rate": vaccination_rates})
-    # for col in cases_deaths_vaccinations:
-    #     if cases_deaths_vaccinations[col].dtype != 'object':
-    #         cases_deaths_vaccinations[col] = StandardScaler().fit_transform(cases_deaths_vaccinations[[col]])
+
+for col in cases_deaths_vaccinations:
+    if cases_deaths_vaccinations[col].dtype != 'object':
+        cases_deaths_vaccinations[col] = StandardScaler().fit_transform(cases_deaths_vaccinations[[col]])
 
 cases_deaths_vaccinations.drop(columns=['state'], inplace=True)
 X_std = cases_deaths_vaccinations
 
-km = KMeans(n_clusters=3, max_iter=100)
+km = KMeans(n_clusters=4, max_iter=100)
 y_clusters = km.fit_predict(cases_deaths_vaccinations)
 centroids = km.cluster_centers_
 
@@ -568,6 +755,9 @@ cases_deaths_vaccinations['cluster'] = y_clusters
 vaccination_deaths = px.scatter(cases_deaths_vaccinations, x="vaccination_rate", y="deaths", color="cluster", labels={"vaccination_rate": "Vaccination Rate", "deaths": "Death Rate"})
 
 st.plotly_chart(vaccination_deaths)
+
+cases_deaths_vaccinations[cases_deaths_vaccinations['cluster'] == 1]
+st.write(cases_deaths_vaccinations)
 
 st.markdown('''
 We can see that throughout 2020, there are 0 vaccinations in all state since the vaccination campaign was yet to start. By February 2021, two states have begun their vaccination campaigns. It speeds up more rapidly by March and April, the vertical clusters start to spread out on the x-axis indicating higher vaccination numbers. In June 2021, there was a remarkable shoot where the y-axis scale completely changed. As of September 2021, the states that may require attention are those with low vaccination rates and high deaths, namely cluster 2, which contains the following states:
@@ -583,12 +773,372 @@ On the other hand, these are the states with relatively high vaccination rates w
 * W.P. Kuala Lumpur
 * W.P. Labuan
 ''')
-    # row, col, num = grid_combos[i]
 
-    # ax = fig.add_subplot(row, col, num)
-    # ax.scatter(cases_deaths_vaccinations['vaccination_rate'], cases_deaths_vaccinations['deaths'], c=y_clusters, cmap='viridis')
-    # ax.set_xlabel('Vaccination Rate')
-    # ax.set_ylabel('Death Rate')
-    # # ax.set_xticks(np.arange(-0.5, 0.5, 0.1))
-    # # ax.set_yticks(np.arange(-0.05, 3.5, 0.5))
-    # ax.set_title(f"{date_range[0]} - {date_range[1]}")
+st.markdown(''''
+## Regression
+''')
+st.markdown('''
+    ### Can we predict the daily vaccination numbers?
+
+    The number of people being vaccinated daily can depend on a lot of factors
+    To answer this, we test:\n
+    1. Multivariate LSTM time-series analysis\n
+    2. Multivariate Support Vector Regression
+''')
+
+st.markdown('''
+### Can we predict the daily vaccination numbers?
+Assuming that vaccination numbers depend on various external factors such as government incentives, spikes in cases, etc., could we predict the daily vaccination numbers using time-series regression models?
+''')
+# vax_population = vax_malaysia.merge(population, on='state')
+malaysia_population = population[population['state'] == 'Malaysia']['pop'].iloc[0]
+vax_malaysia['cumul'] = vax_malaysia['daily_full'].cumsum()
+vax_malaysia['percentage_vaccinated'] = vax_malaysia['cumul'] / malaysia_population
+cases_testing_deaths_vax = cases_malaysia.merge(tests_malaysia, on='date')
+cases_testing_deaths_vax = cases_testing_deaths_vax.merge(deaths_malaysia, on='date')
+cases_testing_deaths_vax = cases_testing_deaths_vax.merge(vax_malaysia[['date', 'daily']], on='date')
+icu_covid = pd.DataFrame(icu.groupby('date')['icu_covid'].sum()).reset_index()
+cases_testing_deaths_vax = cases_testing_deaths_vax.merge(icu_covid, on='date')
+cases_testing_deaths_vax['cumul'] = cases_testing_deaths_vax['daily'].cumsum()
+
+features = ["cases_recovered", "cases_active", "cases_cluster",	"cases_pvax", "cases_fvax", "total_testing", "deaths_new", "icu_covid", "daily"]
+num_features = len(features) - 1
+filtered = cases_testing_deaths_vax[features]
+filtered['date'] = cases_testing_deaths_vax['date']
+filtered['date'] = pd.to_datetime(filtered['date'])
+filtered.set_index('date', inplace=True)
+
+time_series_model = st.selectbox('Select a time-series model', options=['LSTM', 'SVR'])
+
+if time_series_model == 'LSTM':
+    X_scaler = MinMaxScaler()
+    y_scaler = MinMaxScaler()
+    input_data = X_scaler.fit_transform(filtered.iloc[:,:-1])
+    input_y = y_scaler.fit_transform(filtered.iloc[:,-1].values.reshape(-1,1))
+    input_data = np.concatenate((input_data, input_y), axis=1)
+
+    lookback = 100
+    total_size = input_data.shape[0]
+
+    X=[]
+    y=[]
+    for i in range(0, total_size - lookback):
+        t = []
+        for j in range(0, lookback):
+            current_index = i+j
+            t.append(input_data[current_index, :-1])
+        X.append(t)
+        y.append(input_data[lookback+i, num_features])
+    X, y = np.array(X), np.array(y)
+
+    test_size = 50
+    X_test = X[-test_size:]
+    y_test = y[-test_size:]
+
+    X_rest = X[:-test_size]
+    y_rest = y[:-test_size]
+
+    X_train, X_valid, y_train, y_valid = train_test_split(X_rest, y_rest, test_size=0.15, random_state=42)
+
+    X_train = X_train.reshape(X_train.shape[0], lookback, num_features)
+    X_valid = X_valid.reshape(X_valid.shape[0], lookback, num_features)
+    X_test = X_test.reshape(X_test.shape[0], lookback, num_features)
+
+    model = load_model('lstm-time-series.h5')
+    predicted_vaccination = model.predict(X_test)
+
+    st.write(f"Mean Squared Error: {mean_squared_error(y_test, predicted_vaccination)}")
+
+    predicted_vaccination = y_scaler.inverse_transform(predicted_vaccination)
+
+    # line plot
+    time_series, _ = plt.subplots(1,1)
+    ax = time_series.add_subplot(1, 1, 1)
+    ax.plot(list(range(len(predicted_vaccination))), predicted_vaccination, label='Predicted', color='blue')
+    ax.plot(list(range(len(y_test))), y_scaler.inverse_transform(y_test.reshape(-1,1)), label='Actual', color='red')
+    time_series.legend()
+    st.pyplot(time_series)
+
+elif time_series_model == 'SVR':
+    X_scaler_svr = MinMaxScaler()
+    y_scaler_svr = MinMaxScaler()
+    X_svr = X_scaler_svr.fit_transform(filtered.iloc[:,:-1])
+    y_svr = y_scaler_svr.fit_transform(filtered.iloc[:,-1].values.reshape(-1,1))
+
+    X_train, X_test, y_train, y_test = train_test_split(X_svr, y_svr, test_size=0.15, random_state=42, shuffle=True)
+
+    svr = SVR(kernel='rbf', C=1e3, gamma=0.1)
+    svr.fit(X_train, y_train)
+
+    predicted_vaccination = svr.predict(X_test)
+    st.write(f"Mean Squared Error: {mean_squared_error(y_test, predicted_vaccination)}")
+    predicted_vaccination = y_scaler_svr.inverse_transform(predicted_vaccination.reshape(-1,1))
+
+    # line plot
+    time_series, _ = plt.subplots(1,1)
+    ax = time_series.add_subplot(1, 1, 1)
+    ax.plot(list(range(len(predicted_vaccination))), predicted_vaccination, label='Predicted', color='blue')
+    ax.plot(list(range(len(y_test))), y_scaler_svr.inverse_transform(y_test.reshape(-1,1)), label='Actual', color='red')
+    time_series.legend()
+    st.pyplot(time_series)
+
+    # mean squared error
+    st.write(f"Mean Squared Error: {mean_squared_error(y_test, svr.predict(X_test))}")
+
+st.write('''
+### Does the current vaccination rate allow herd immunity to be achieved by 30 November 2021? You can assume that herd immunity can be achieved with 80% of the population having been vaccinated.
+
+To answer this question, we use ARIMA forecasting (Auto-Regressive Integrated Moving Average) to predict the future. A problem is that ARIMA is univariate in nature, so we have to acknowledge that the estimates are quite rough.
+''')
+st.write('ARIMA best parameters obtained using SARIMAX hyperparameter tuning.')
+st.write('Best model: SARIMAX(1, 1, 1)')
+
+vax_malaysia['cumul_full'] = vax_malaysia['daily_full'].cumsum()
+train = vax_malaysia[:len(vax_malaysia) - 50]
+test = vax_malaysia[len(vax_malaysia) - 50:]
+
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+model = SARIMAX(train['cumul_full'], order=(1, 1, 1))
+result = model.fit()
+
+start = len(train)
+end = len(train) + len(test) - 1
+predictions = result.predict(start, end, typ='levels').rename('Predictions')
+
+start = 228
+end = 268
+predictions = result.predict(start, end, typ='levels').rename('Predictions')
+
+cumul_vaccine = list(vax_malaysia['cumul_full'])
+cumul_vaccine += predictions.tolist()
+
+from datetime import date, timedelta
+def add_date(dt, row):
+    split = dt.split('-')
+    year = int(split[0])
+    month = int(split[1])
+    day = int(split[2])
+    date_orig = date(year, month, day)
+    new_date = date_orig + timedelta(days=row)
+    return str(new_date)
+dts = [add_date('2021-11-09', i) for i in range(1, 42)]
+dts = list(vax_malaysia['date']) + dts
+
+malaysia_population = population[population['state']=='Malaysia']['pop'].values[0]
+
+future = px.line(x=dts, y=cumul_vaccine / malaysia_population, title='Vaccination Rate in Malaysia (extrapolated')
+st.plotly_chart(future)
+
+st.markdown('''
+Based on ARIMA auto-regressive prediction, it is possible that herd immunity will be reached before 30 November, if it continues at this rate.
+''')
+
+st.markdown('''
+### Can we predict Covid-19 mortality numbers across the nation?
+''')
+
+dataset1 = before_pp_cases_malaysia.copy()
+dataset2 = before_pp_deaths_malaysia.copy()
+dataset2 = dataset2[['date','deaths_new']]
+dataset3 = before_pp_tests_malaysia.copy()
+dataset4 = before_pp_vax_malaysia.copy()
+total_dataset = dataset1.merge(dataset2, how='inner', on=['date'] )
+total_dataset.fillna(0, inplace=True)
+total_dataset = total_dataset.merge(dataset3, how='inner', on=['date'] )
+total_dataset.fillna(0, inplace=True)
+total_dataset = total_dataset.merge(dataset4, how='inner', on=['date'] )
+total_dataset.fillna(0, inplace=True)
+
+X = total_dataset.drop(['date','deaths_new'], axis=1)  
+y = total_dataset['deaths_new']  
+
+selector = SelectKBest(mutual_info_regression, k=6)
+selector.fit(X, y)
+mutual_info_best = X.columns[selector.get_support()]
+
+rfe_selector = RFE(LinearRegression(), n_features_to_select=10)
+rfe_selector.fit(X, y)
+rfe_best = X.columns[rfe_selector.get_support()]
+
+rf = RandomForestRegressor(n_jobs=4, oob_score=True)
+boruta = BorutaPy(rf, n_estimators='auto', verbose=2, random_state=0)
+boruta.fit(X.values, y.ravel())
+boruta_best = [X.columns[i] for i, x in enumerate(boruta.support_) if x]
+
+train_model_dataset = total_dataset[boruta_best]
+train_model_dataset['deaths_new'] = total_dataset['deaths_new']
+
+X = train_model_dataset.drop(['deaths_new'], axis=1)  
+X = MinMaxScaler().fit_transform(X)
+y = train_model_dataset['deaths_new']  
+y = MinMaxScaler().fit_transform(y.values.reshape(-1, 1))
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=2) 
+
+regressor = DecisionTreeRegressor(max_depth=2, criterion="mae", splitter="best")  
+regressor.fit(X_train, y_train) 
+pred = regressor.predict(X_test)
+
+mae = round(mean_absolute_error(y_test, pred),4)
+mse = round(mean_squared_error(y_test, pred),4)
+
+st.write(f"DecisionTreeRegressor MAE: {mae}")
+st.write(f"DecisionTreeRegressor MSE: {mse}")
+
+st.markdown('''
+First of all, we perform feature selection from cases_malaysia.csv, deaths_malaysia.csv, and tests_malaysia.csv datasets 
+by using Boruta in python. After that , the  features that are being selected will be used to train our decision tree 
+regressor model. For our model, it is able to archieve a 0.057 mean absolute error and a 0.0123 mean squared error. Hence, based on our result
+''')
+
+st.markdown('''
+### Can we predict mortality numbers for Melaka, Negeri Sembilan, Perlis, Selangor and W.P. Putrajaya?
+''')
+
+def state_mortality_prediction(state) :
+    dataset1 = before_pp_cases_state.copy()
+    dataset2 = before_pp_deaths_state.copy()
+    dataset2 = dataset2[['date','state','deaths_new']]
+    dataset3 = before_pp_tests_state.copy()
+    dataset4 = before_pp_vax_state.copy()
+    total_dataset = dataset1[dataset1['state'] == state].merge(dataset2[dataset2['state'] == state], how='inner', on=['date','state'] )
+    total_dataset.fillna(0, inplace=True)
+    total_dataset = total_dataset.merge(dataset3[dataset3['state'] == state], how='inner', on=['date','state'] )
+    total_dataset.fillna(0, inplace=True)
+    total_dataset = total_dataset.merge(dataset4[dataset4['state'] == state], how='inner', on=['date','state'] )
+    total_dataset.fillna(0, inplace=True)
+    X = total_dataset.drop(['date','deaths_new','state'], axis=1)  
+    y = total_dataset['deaths_new']  
+
+    selector = SelectKBest(mutual_info_regression, k=6)
+    selector.fit(X, y)
+    mutual_info_best = X.columns[selector.get_support()]
+
+    rfe_selector = RFE(LinearRegression(), n_features_to_select=10)
+    rfe_selector.fit(X, y)
+    rfe_best = X.columns[rfe_selector.get_support()]
+
+    rf = RandomForestRegressor(n_jobs=4, oob_score=True)
+    boruta = BorutaPy(rf, n_estimators='auto', verbose=2, random_state=0)
+    boruta.fit(X.values, y.ravel())
+    boruta_best = [X.columns[i] for i, x in enumerate(boruta.support_) if x]
+    print(boruta_best)
+
+    return boruta_best,total_dataset
+
+def get_result(boruta_best , total_dataset) :
+    train_model_dataset = total_dataset[boruta_best]
+    train_model_dataset['deaths_new'] = total_dataset['deaths_new']
+    X = train_model_dataset.drop(['deaths_new'], axis=1)  
+    X = MinMaxScaler().fit_transform(X)
+    y = train_model_dataset['deaths_new']  
+    y = MinMaxScaler().fit_transform(y.values.reshape(-1, 1))
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=2) 
+    regressor = DecisionTreeRegressor(max_depth=2, criterion="mae", splitter="best")  
+    regressor.fit(X_train, y_train) 
+    pred = regressor.predict(X_test)
+    mae = round(mean_absolute_error(y_test, pred),4)
+    mse = round(mean_squared_error(y_test, pred),4)
+
+    st.write(f"DecisionTreeRegressor MAE: {mae}")
+    st.write(f"DecisionTreeRegressor MSE: {mse}")
+
+st.markdown('''
+For these questions, we used boruta for the features selection part and the datasets involved are cases_state.csv, 
+deaths_state.csv, tests_state.csv, and vax_state.csv. After the features are selected, we will use the features in 
+our decision tree regressor model to perform the prediction. Based on our results, Selangor scored the lowest value 
+in the mean absolute error which is only 0.0554 and Selangor also scored the lowest value in the mean squared error 
+result,0.0042.
+''')
+
+state_choosen = st.selectbox('Which state you want to check?', ['Melaka', 'Negeri Sembilan', 'Perlis','Selangor','W.P. Putrajaya'])
+st.write(f"{state_choosen}")
+boruta_best , total_dataset = state_mortality_prediction(state_choosen)
+get_result(boruta_best , total_dataset)
+
+st.markdown('''
+## Classification
+''')
+st.markdown('''
+### Can we classify individual check-ins in Malaysia into groups (Low, Medium and High)?
+We first do feature selection using Boruta, SMOTE the dataset then evaluate Random Forest Classifier, Logistic Regression and the Naive Bayes classifier.
+''')
+cases_testing_deaths_vax_checkins = cases_malaysia.merge(tests_malaysia, on='date')
+cases_testing_deaths_vax_checkins = cases_testing_deaths_vax_checkins.merge(deaths_malaysia, on='date')
+cases_testing_deaths_vax_checkins = cases_testing_deaths_vax_checkins.merge(vax_malaysia[['date', 'daily_full']], on='date')
+cases_testing_deaths_vax_checkins = cases_testing_deaths_vax_checkins.merge(checkins[['date', 'unique_ind']], on='date')
+
+cases_testing_deaths_vax_checkins['ind_checkins_class'] = pd.cut(cases_testing_deaths_vax_checkins['unique_ind'], 3, labels=['Low', 'Medium', 'High'])
+cases_testing_deaths_vax_checkins.drop(['unique_ind'], axis=1, inplace=True)
+
+features = ["cases_new", "cases_import",	"cases_recovered", "cases_active", "cases_cluster",	"cases_pvax", "cases_fvax",	"cases_child","cases_adolescent", "cases_adult", "cases_elderly", "total_testing", "deaths_new", "daily_full", "ind_checkins_class"]
+
+filtered = cases_testing_deaths_vax_checkins[features]
+filtered['date'] = cases_testing_deaths_vax_checkins['date']
+filtered['date'] = pd.to_datetime(filtered['date'])
+filtered.set_index('date', inplace=True)
+from imblearn.over_sampling import SMOTE
+# import train_test_split
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
+# SMOTE dataset
+X = filtered.drop(columns=['ind_checkins_class'])
+y = filtered['ind_checkins_class']
+smt = SMOTE(random_state=42, k_neighbors=3)
+X_smt, y_smt = smt.fit_resample(X, y)
+
+# train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X_smt, y_smt, test_size=0.2, random_state=42)
+
+classification_model = st.selectbox('Which classification model do you want to test?', ['Random Forest Classifier', 'Logistic Regression', 'Naive Bayes'])
+
+if classification_model == 'Random Forest Classifier':
+    # Random Forest Classifier
+    rf = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=0)
+    rf.fit(X_train, y_train)
+    # get score
+    accuracy = rf.score(X_test, y_test)
+    # F1-Score
+    f1 = f1_score(y_test, rf.predict(X_test), average='weighted')
+
+    st.write(f"Accuracy of Random Forest: {accuracy}")
+    st.write(f"Weighted Averaged F1-Score of Random Forest: {f1}")
+
+    y_pred = rf.predict(X_test)
+
+    # plot confusion matrix with plotly
+    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred), x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred), colorscale='Viridis', showscale=True)
+    st.plotly_chart(cf)
+
+elif classification_model == 'Logistic Regression':
+    log = LogisticRegression()
+    log.fit(X_train, y_train)
+    accuracy = log.score(X_test, y_test)
+    f1 = f1_score(y_test, log.predict(X_test), average='weighted')
+
+    st.write(f"Accuracy of Logistic Regression: {accuracy}")
+    st.write(f"Weighted Averaged F1-Score of Logistic Regression: {f1}")
+
+    # classification report
+    y_pred = log.predict(X_test)
+
+    # plot confusion matrix with plotly
+    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
+
+else:
+    gnb = GaussianNB()
+    gnb.fit(X_train, y_train)
+
+    accuracy = gnb.score(X_test, y_test)
+    f1 = f1_score(y_test, gnb.predict(X_test), average='weighted')
+
+    st.write(f"Accuracy of Naive Bayes: {accuracy}")
+    st.write(f"Weighted Averaged F1-Score of Naive Bayes: {f1}")
+
+    # classification report
+    y_pred = gnb.predict(X_test)
+
+    # plot confusion matrix with plotly
+    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
