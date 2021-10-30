@@ -1023,7 +1023,7 @@ cases_testing_deaths_vax_checkins = cases_testing_deaths_vax_checkins.merge(chec
 cases_testing_deaths_vax_checkins['ind_checkins_class'] = pd.cut(cases_testing_deaths_vax_checkins['unique_ind'], 3, labels=['Low', 'Medium', 'High'])
 cases_testing_deaths_vax_checkins.drop(['unique_ind'], axis=1, inplace=True)
 
-features = ["cases_new", "cases_import",	"cases_recovered", "cases_active", "cases_cluster",	"cases_pvax", "cases_fvax",	"cases_child","cases_adolescent", "cases_adult", "cases_elderly", "total_testing", "deaths_new", "daily_full", "ind_checkins_class"]
+features = ["cases_new", "cases_import", "cases_recovered", "cases_active", "cases_cluster",	"cases_pvax", "cases_fvax",	"cases_child","cases_adolescent", "cases_adult", "cases_elderly", "total_testing", "deaths_new", "daily_full", "ind_checkins_class"]
 
 filtered = cases_testing_deaths_vax_checkins[features]
 filtered['date'] = cases_testing_deaths_vax_checkins['date']
