@@ -144,7 +144,6 @@ st.markdown('''
 ## Spatially Mapped Covid-19 data
 ''')
 state_locations = []
-
 with open("./states_lat_lon.txt", "r") as f:
     text = f.read()
     for line in text.split("\n"):
@@ -223,7 +222,14 @@ plot = px.scatter(cases_income, x='income', y='cases_new', color='cases_new', si
 st.plotly_chart(plot)
 
 st.markdown('''
-There appears to be a weak correlation, hinting that Covid cases may not be a totally socio-economic one. As the average income of the state increases, the more populated it generally is, which would mean more cases. The population is a strong **confounding variable**.
+There appears to be a weak correlation, hinting that Covid cases may not be a totally socio-economic one. As the average income of the state increases, the more populated it generally is, which would mean more cases. The population is a strong **confounding variable**. We can account for the influence of population by taking cases per 10k people instead before plotting.
+''')
+cases_income['cases_per_10k'] = cases_income['cases_new'] / (cases_income['pop'] / 10000)
+plot = px.scatter(cases_income, x='income', y='cases_per_10k', color='cases_new', size='pop', labels={'cases_new':'Total Cases in State per 10k people', 'income': 'Average Income of State'})
+st.plotly_chart(plot)
+
+st.markdown('''
+There does not appear to be a correlation still, even after accounting for state populations.
 ''')
 # =============================================================================
 # Is there a correlation between vaccination and daily cases at a national level
@@ -299,16 +305,6 @@ def cases_vax_corr(state, mode = 1,percentage = 0):
     corr = state_merged[['daily_full', 'cases_new']].corr()
 
     return corr,vax_state_temp,state_merged
-
-st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')
-
-corr_selangor1,vax_percentage_selangor1 = cases_vax_corr('Selangor',1)
-corr_selangor2,vax_percentage_selangor2 = cases_vax_corr('Selangor',2)
-corr_sabah1,vax_percentage_sabah1 = cases_vax_corr('Sabah',1)
-corr_sabah2,vax_percentage_sabah2 = cases_vax_corr('Sabah',2)
-corr_sarawak1,vax_percentage_sarawak1= cases_vax_corr('Sarawak',1)
-corr_sarawak2,vax_percentage_sarawak2= cases_vax_corr('Sarawak',2)
-
 
 st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')
 corr_selangor1,vax_percentage_selangor1,selangor_state_merged1 = cases_vax_corr('Selangor',1)
@@ -557,6 +553,8 @@ Pfizer is the most used vaccine in Malaysia, followed by Sinovac and then Astraz
 st.markdown('''
 ## Clustering
 In this section, we will employ different clustering algorithms to see whether states suffering from Covid-19 form any visible patterns. 🦠
+
+Since different states have different testing rates, population densities, etc., we calculate the **cases per 10k** instead of all.
 ''')
 
 st.markdown('''
@@ -578,8 +576,8 @@ vaccinations = []
 deaths = []
 
 for state in states:
-    cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
-    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum())
+    cases.append((cases_state_date[cases_state_date['state'] == state]['cases_new'].sum()) / (population[population['state'] == state]['pop'].values[0] / 10000))
+    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum() / (population[population['state'] == state]['pop'].values[0] / 10000))
 
 cases_deaths_vaccinations = pd.DataFrame({"state": states, "cases": cases, "deaths": deaths})
 for col in cases_deaths_vaccinations:
@@ -594,7 +592,7 @@ y_clusters = km.fit_predict(cases_deaths_vaccinations)
 cases_deaths_vaccinations['cluster'] = y_clusters
 centroids = km.cluster_centers_
 
-twodimensionalclusters = px.scatter(cases_deaths_vaccinations, x="cases", y="deaths", color="cluster")
+twodimensionalclusters = px.scatter(cases_deaths_vaccinations, x="cases", y="deaths", color="cluster", labels={"cases": "Cases Per 10k", "deaths": "Deaths Per 10k"})
 st.plotly_chart(twodimensionalclusters)
 
 st.markdown('#### DBSCAN')
@@ -607,8 +605,8 @@ vaccinations = []
 deaths = []
 
 for state in states:
-    cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
-    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum())
+    cases.append((cases_state_date[cases_state_date['state'] == state]['cases_new'].sum()) / (population[population['state'] == state]['pop'].values[0] / 10000))
+    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum() / (population[population['state'] == state]['pop'].values[0] / 10000))
 
 cases_deaths_vaccinations = pd.DataFrame({"state": states, "cases": cases, "deaths": deaths})
 
@@ -631,9 +629,17 @@ st.markdown('''
 #### Analysis up until September 2021-October 2021
 We can observe that in the beginning, the majority of the clusters were positioned towards the bottom left and they maintain a similar pattern until about August 2020. In August, the cases were still high but there were fewer deaths, which may signify that the situation was improving, besides the one state that is in the upper corner of the plot that stands out from the rest. Around December, the bottom-right cluster begins to break up and states start moving diagonally upwards in the graph, meaning higher number of deaths and more cases. By September 2021, the states fall in a sort of straight diagonal line, with the performance of states spread across the spectrum from mild to serious.
 
-If a state has high cases and low deaths, that shows the effectiveness of the vaccination campaign. This is because vaccines have been known to reduce the seriousness of cases. Evidently, as the vaccination campaign begins around the start of April, cluster points start to move mainly horizontally (smaller increase in deaths).
+By October 2021, K-Means indicates the formation of 3 main clusters:\n
+1. Low Cases and Low Deaths\n
+2. High Cases and High Deaths\n
+3. High Cases and Low Deaths\n
 
-**We also set out to find that one state that created a cluster of it's own throughout and it was Selangor, to no one's surprise.**
+If there are low deaths despite high cases, then that is acceptable because vaccines have been known to reduce the seriousness of cases. However, the states in "high cases and high deaths" need to be looked at:\n
+1. Johor\n
+2. Kedah\n
+3. Pulau Pinang\n
+4. Sabah\n
+5. Selangor\n
 ''')
 
 
@@ -661,8 +667,8 @@ deaths = []
 states = ['Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang', 'Perak', 'Perlis', 'Pulau Pinang', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu', 'W.P. Kuala Lumpur', 'W.P. Labuan', 'W.P. Putrajaya']
 
 for state in states:
-    cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
-    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum())
+    cases.append((cases_state_date[cases_state_date['state'] == state]['cases_new'].sum()) / (population[population['state'] == state]['pop'].values[0] / 10000))
+    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum() / (population[population['state'] == state]['pop'].values[0] / 10000))
     vaccinations.append(vax_state_date[vax_state_date['state'] == state]['daily_full'].sum() / population.loc[population['state'] == state, 'pop'].values[0])
 
 cases_deaths_vaccinations = pd.DataFrame({"state": states, "cases": cases, "deaths": deaths, "vaccinations": vaccinations})
@@ -678,7 +684,7 @@ y_clusters = km.fit_predict(cases_deaths_vaccinations)
 cases_deaths_vaccinations['cluster'] = y_clusters
 centroids = km.cluster_centers_
 
-threedimensionalclusters = px.scatter_3d(cases_deaths_vaccinations, x="cases", y="deaths", z="vaccinations", color="cluster")
+threedimensionalclusters = px.scatter_3d(cases_deaths_vaccinations, x="cases", y="deaths", z="vaccinations", color="cluster", labels={"cases": "Cases Per 10k", "deaths": "Deaths Per 10k", "vaccinations": "Vaccination Rate"})
 st.plotly_chart(threedimensionalclusters)
 
 st.markdown('''
@@ -711,10 +717,10 @@ vaccination_rates = []
 deaths = []
 
 for state in states:
-    cases.append(cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
-    deaths.append(deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum() / cases_state_date[cases_state_date['state'] == state]['cases_new'].sum())
-    # divide number of vaccinations by state population
+    cases.append((cases_state_date[cases_state_date['state'] == state]['cases_new'].sum()) / (population[population['state'] == state]['pop'].values[0] / 10000))
+    deaths.append((deaths_state_date[deaths_state_date['state'] == state]['deaths_new'].sum()) / (population[population['state'] == state]['pop'].values[0] / 10000))
     vaccination_rates.append(vax_state_date[vax_state_date['state'] == state]['daily_full'].sum() / population.loc[population['state'] == state, 'pop'].values[0])
+
 
 cases_deaths_vaccinations = pd.DataFrame({"state": states, "deaths": deaths, "vaccination_rate": vaccination_rates})
 
@@ -732,7 +738,7 @@ centroids = km.cluster_centers_
 # put back state column
 cases_deaths_vaccinations['state'] = states
 cases_deaths_vaccinations['cluster'] = y_clusters
-vaccination_deaths = px.scatter(cases_deaths_vaccinations, x="vaccination_rate", y="deaths", color="cluster", labels={"vaccination_rate": "Vaccination Rate", "deaths": "Death Rate"})
+vaccination_deaths = px.scatter(cases_deaths_vaccinations, x="vaccination_rate", y="deaths", color="cluster", labels={"vaccination_rate": "Vaccination Rate", "deaths": "Deaths per 10k"})
 
 st.plotly_chart(vaccination_deaths)
 
@@ -740,18 +746,12 @@ cases_deaths_vaccinations[cases_deaths_vaccinations['cluster'] == 1]
 st.write(cases_deaths_vaccinations)
 
 st.markdown('''
-We can see that throughout 2020, there are 0 vaccinations in all state since the vaccination campaign was yet to start. By February 2021, two states have begun their vaccination campaigns. It speeds up more rapidly by March and April, the vertical clusters start to spread out on the x-axis indicating higher vaccination numbers. In June 2021, there was a remarkable shoot where the y-axis scale completely changed. As of September 2021, the states that may require attention are those with low vaccination rates and high deaths, namely cluster 2, which contains the following states:
+We can see that throughout 2020, there are 0 vaccinations in all state since the vaccination campaign was yet to start. By February 2021, two states have begun their vaccination campaigns. It speeds up more rapidly by March and April, the vertical clusters start to spread out on the x-axis indicating higher vaccination numbers. In June 2021, there was a remarkable shoot where the y-axis scale completely changed. As of September 2021, the states that may require attention are those with low vaccination rates and high deaths, namely the cluster which contains the following states:
 
-* Melaka
-* Negeri Sembilan
-* Perlis
+* Johor
+* Kedah
+* Pulau Pinang
 * Selangor
-* W.P. Putrajaya
-
-On the other hand, these are the states with relatively high vaccination rates w.r.t deaths:
-* Sarawak
-* W.P. Kuala Lumpur
-* W.P. Labuan
 ''')
 
 st.markdown(''''
@@ -907,7 +907,7 @@ dts = list(vax_malaysia['date']) + dts
 
 malaysia_population = population[population['state']=='Malaysia']['pop'].values[0]
 
-future = px.line(x=dts, y=cumul_vaccine / malaysia_population, title='Vaccination Rate in Malaysia (extrapolated')
+future = px.line(x=dts, y=cumul_vaccine / malaysia_population, title='Vaccination Rate in Malaysia (extrapolated)')
 st.plotly_chart(future)
 
 st.markdown('''
@@ -916,6 +916,7 @@ Based on ARIMA auto-regressive prediction, it is possible that herd immunity wil
 
 st.markdown('''
 ### Can we predict Covid-19 mortality numbers across the nation?
+Covid-19 deaths are definitely dependent on external factors, so the question asked is whether we can train a regression model to predict Covid-19 deaths.
 ''')
 
 dataset1 = before_pp_cases_malaysia.copy()
@@ -930,23 +931,9 @@ total_dataset.fillna(0, inplace=True)
 total_dataset = total_dataset.merge(dataset4, how='inner', on=['date'] )
 total_dataset.fillna(0, inplace=True)
 
-X = total_dataset.drop(['date','deaths_new'], axis=1)  
-y = total_dataset['deaths_new']  
+features = ['cases_recovered', 'cases_active', 'cases_pvax', 'cases_child', 'cases_adolescent', 'cases_elderly', 'daily_partial', 'cumul_partial', 'cumul_full', 'cumul', 'cansino']
 
-selector = SelectKBest(mutual_info_regression, k=6)
-selector.fit(X, y)
-mutual_info_best = X.columns[selector.get_support()]
-
-rfe_selector = RFE(LinearRegression(), n_features_to_select=10)
-rfe_selector.fit(X, y)
-rfe_best = X.columns[rfe_selector.get_support()]
-
-rf = RandomForestRegressor(n_jobs=4, oob_score=True)
-boruta = BorutaPy(rf, n_estimators='auto', verbose=2, random_state=0)
-boruta.fit(X.values, y.ravel())
-boruta_best = [X.columns[i] for i, x in enumerate(boruta.support_) if x]
-
-train_model_dataset = total_dataset[boruta_best]
+train_model_dataset = total_dataset[features]
 train_model_dataset['deaths_new'] = total_dataset['deaths_new']
 
 X = train_model_dataset.drop(['deaths_new'], axis=1)  
@@ -967,13 +954,8 @@ st.write(f"DecisionTreeRegressor MAE: {mae}")
 st.write(f"DecisionTreeRegressor MSE: {mse}")
 
 st.markdown('''
-First of all, we perform feature selection from cases_malaysia.csv, deaths_malaysia.csv, and tests_malaysia.csv datasets 
-by using Boruta in python. After that , the  features that are being selected will be used to train our decision tree 
-regressor model. For our model, it is able to archieve a 0.057 mean absolute error and a 0.0123 mean squared error. Hence, based on our result
-''')
-
-st.markdown('''
 ### Can we predict mortality numbers for Melaka, Negeri Sembilan, Perlis, Selangor and W.P. Putrajaya?
+We looked at this analysis nationally, but what about at a state-level?
 ''')
 
 def state_mortality_prediction(state) :
@@ -991,24 +973,19 @@ def state_mortality_prediction(state) :
     X = total_dataset.drop(['date','deaths_new','state'], axis=1)  
     y = total_dataset['deaths_new']  
 
-    selector = SelectKBest(mutual_info_regression, k=6)
-    selector.fit(X, y)
-    mutual_info_best = X.columns[selector.get_support()]
+    state_features = {
+        'Selangor': ['cases_new', 'cases_import', 'cases_cluster', 'cases_child','cases_adolescent', 'cases_adult', 'cases_elderly', 'cumul_partial','cumul', 'cumul_full_child'],
+        'W.P. Putrajaya': ['cases_new', 'cases_import', 'cases_cluster', 'cases_pvax','cases_child', 'cases_adult', 'cases_elderly', 'daily_full_child','cumul_full_child', 'pending'],
+        'Melaka': ['cases_new', 'cases_recovered', 'cases_fvax', 'cases_child','cases_adolescent', 'cases_adult', 'cases_elderly', 'cumul_full_child','astra2', 'pending'],
+        'Negeri Sembilan': ['cases_new', 'cases_import', 'cases_fvax', 'cases_child', 'cases_adult','cases_elderly', 'cumul_partial', 'cumul_full', 'cumul', 'cansino'],
+        'Perlis': ['cases_new', 'cases_import', 'cases_cluster', 'cases_child','cases_adolescent', 'cases_elderly', 'daily_partial','daily_full_child', 'pfizer1', 'sinovac1']
+    }
 
-    rfe_selector = RFE(LinearRegression(), n_features_to_select=10)
-    rfe_selector.fit(X, y)
-    rfe_best = X.columns[rfe_selector.get_support()]
+    rfe_best = state_features[state]
+    return rfe_best, total_dataset
 
-    rf = RandomForestRegressor(n_jobs=4, oob_score=True)
-    boruta = BorutaPy(rf, n_estimators='auto', verbose=2, random_state=0)
-    boruta.fit(X.values, y.ravel())
-    boruta_best = [X.columns[i] for i, x in enumerate(boruta.support_) if x]
-    print(boruta_best)
-
-    return boruta_best,total_dataset
-
-def get_result(boruta_best , total_dataset) :
-    train_model_dataset = total_dataset[boruta_best]
+def get_result(rfe_best , total_dataset) :
+    train_model_dataset = total_dataset[rfe_best]
     train_model_dataset['deaths_new'] = total_dataset['deaths_new']
     X = train_model_dataset.drop(['deaths_new'], axis=1)  
     X = MinMaxScaler().fit_transform(X)
@@ -1025,18 +1002,11 @@ def get_result(boruta_best , total_dataset) :
     st.write(f"DecisionTreeRegressor MAE: {mae}")
     st.write(f"DecisionTreeRegressor MSE: {mse}")
 
-st.markdown('''
-For these questions, we used boruta for the features selection part and the datasets involved are cases_state.csv, 
-deaths_state.csv, tests_state.csv, and vax_state.csv. After the features are selected, we will use the features in 
-our decision tree regressor model to perform the prediction. Based on our results, Selangor scored the lowest value 
-in the mean absolute error which is only 0.0554 and Selangor also scored the lowest value in the mean squared error 
-result,0.0042.
-''')
+state_choosen = st.selectbox('Which state do you want to check?', ['Melaka', 'Negeri Sembilan', 'Perlis','Selangor','W.P. Putrajaya'])
 
-state_choosen = st.selectbox('Which state you want to check?', ['Melaka', 'Negeri Sembilan', 'Perlis','Selangor','W.P. Putrajaya'])
 st.write(f"{state_choosen}")
 boruta_best , total_dataset = state_mortality_prediction(state_choosen)
-get_result(boruta_best , total_dataset)
+get_result(boruta_best, total_dataset)
 
 st.markdown('''
 ## Classification
@@ -1122,3 +1092,69 @@ else:
 
     # plot confusion matrix with plotly
     cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
+
+st.markdown('''
+### Can we predict the type of vaccine based on the symptoms?
+Some vaccines produce more of a certain symptom than others. Hence, would it be possible to predict whether the vaccine is Pfizer, Sinovac, Astra, etc. based purely on the symptoms reported each day.
+We use self-reported symptoms for each vaccine daily as the training data. Appropriate hyperparameter tuning is done using GridSearchCV for the Random Forest Classifier. Both Logistic Regression and the Support Vector Classifier are evaluated for this question using the metrics accuracy and weighted averaged F1-Score. The training set is SMOTE-d.
+Feature selection (symptoms) is done using Recursive Feature Elimination.
+''')
+vaccine_prediction = aefi.copy()
+vaccine_prediction['vaxtype_label'] = LabelEncoder().fit_transform(vaccine_prediction['vaxtype'])
+# recursive feature elimination
+from sklearn.feature_selection import RFE
+from sklearn.linear_model import LogisticRegression
+
+y_encoder = LabelEncoder()
+
+X = vaccine_prediction.drop(columns=['date', 'vaxtype', 'vaxtype_label'])
+y = y_encoder.fit_transform(vaccine_prediction['vaxtype'])
+
+logreg = LogisticRegression()
+rfe = RFE(logreg, 20)
+rfe = rfe.fit(X, y)
+
+X_transformed = pd.DataFrame(rfe.transform(X), columns=X.columns[rfe.support_])
+
+X_train, X_test, y_train, y_test = train_test_split(X_transformed, y, test_size=0.2, random_state=42)
+smt = SMOTE(random_state=42, k_neighbors=3)
+X_smt, y_smt = smt.fit_resample(X_train, y_train)
+
+classification_model2 = st.selectbox('Which classification model do you want to test?', ['Logistic Regression', 'Support Vector Regression'])
+
+if classification_model2 == 'Logistic Regression':
+    logreg = LogisticRegression()
+    logreg.fit(X_smt, y_smt)
+    accuracy = logreg.score(X_test, y_test)
+    f1 = f1_score(y_test, logreg.predict(X_test), average='weighted')
+    st.write(f"Accuracy of Logistic Regression: {accuracy}")
+    st.write(f"Weighted Averaged F1-Score of Logistic Regression: {f1}")
+
+    y_pred = logreg.predict(X_test)
+
+    # confusion matrix
+    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['Pfizer', 'Sinovac', 'Astrazeneca', 'Cansino'], y=['True Pfizer', 'True Sinovac', 'True Astrazeneca', 'True Cansino'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
+    st.plotly_chart(cf)
+
+elif classification_model2 == 'Support Vector Regression':
+    # defining parameter range
+    param_grid = {'C': [0.1, 1, 10, 100, 1000],
+                'gamma': [1, 0.1, 0.01, 0.001, 0.0001],
+                'kernel': ['linear', 'rbf']}
+
+    grid = GridSearchCV(SVC(), param_grid, refit = True, verbose = 3)
+
+    # fitting the model for grid search
+    grid.fit(X_smt, y_smt)
+    svc = grid.best_estimator_
+    st.write(f'Best Model {svc}')
+    accuracy = svc.score(X_test, y_test)
+    f1 = f1_score(y_test, svc.predict(X_test), average='weighted')
+    st.write(f"Accuracy of Support Vector Regression: {accuracy}")
+    st.write(f"Weighted Averaged F1-Score of Support Vector Regression: {f1}")
+
+    y_pred = svc.predict(X_test)
+
+    # confusion matrix
+    cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['Pfizer', 'Sinovac', 'Astrazeneca', 'Cansino'], y=['True Pfizer', 'True Sinovac', 'True Astrazeneca', 'True Cansino'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
+    st.plotly_chart(cf)
