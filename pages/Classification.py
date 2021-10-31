@@ -207,11 +207,24 @@ def app():
     ### Can we predict the type of vaccine based on the symptoms?
     Some vaccines produce more of a certain symptom than others. Hence, would it be possible to predict whether the vaccine is Pfizer, Sinovac, Astra, etc. based purely on the symptoms reported each day.
     We use self-reported symptoms for each vaccine daily as the training data. Appropriate hyperparameter tuning is done using GridSearchCV for the Random Forest Classifier. Both Logistic Regression and the Support Vector Classifier are evaluated for this question using the metrics accuracy and weighted averaged F1-Score. The training set is SMOTE-d.
-    Feature selection (symptoms) is done using Recursive Feature Elimination.
-    ''')
+
+    Feature selection (symptoms) is done using Recursive Feature Elimination.''')
     vaccine_prediction = aefi.copy()
     vaccine_prediction['vaxtype_label'] = LabelEncoder().fit_transform(vaccine_prediction['vaxtype'])
+    vaccine_prediction.drop(columns=['daily_total'], inplace=True)
 
+    
+    X_scaler = MinMaxScaler()
+    X = vaccine_prediction.drop(columns=['date', 'vaxtype', 'vaxtype_label'])
+    X_scaled = X_scaler.fit_transform(X)
+    y = vaccine_prediction['vaxtype_label']
+
+    logreg = LogisticRegression()
+    rfe = RFE(logreg, 20)
+    rfe = rfe.fit(X_scaled, y)
+
+    X_transformed = pd.DataFrame(rfe.transform(X_scaled), columns=X.columns[rfe.support_])
+    
     y_encoder = LabelEncoder()
 
     X = vaccine_prediction.drop(columns=['date', 'vaxtype', 'vaxtype_label'])
@@ -247,7 +260,15 @@ def app():
     elif classification_model2 == 'Support Vector Classification':
         # defining parameter range
         best_params = {'C': 1000, 'gamma': 1, 'kernel': 'rbf'}
-
+        param_grid = {'C': [0.1, 1, 10, 100, 1000],
+              'gamma': [1, 0.1, 0.01, 0.001, 0.0001],
+              'kernel': ['linear', 'rbf']}
+ 
+        grid = GridSearchCV(SVC(), param_grid, refit = True, verbose = 3)
+ 
+        # fitting the model for grid search
+        grid.fit(X_smt, y_smt)
+        svc = SVC(**{'C': 1000, 'gamma': 1, 'kernel': 'rbf'})
         svc = SVC(**best_params)
         svc.fit(X_smt, y_smt)
 
