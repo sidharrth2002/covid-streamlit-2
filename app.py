@@ -658,7 +658,7 @@ date_range = st.select_slider('Slide to see the clusters moving through time usi
 
 cases_state_date = cases_state[(cases_state['date'] >= date_range[0]) & (cases_state['date'] < date_range[1])]
 deaths_state_date = deaths_state[(deaths_state['date'] >= date_range[0]) & (deaths_state['date'] < date_range[1])]
-vax_state_date = vax_state[(vax_state['date'] >= date_range[0]) & (vax_state['date'] < date_range[1])]
+vax_state_date = vax_state[(vax_state['date'] < date_range[1])]
 
 cases = []
 vaccinations = []
@@ -710,7 +710,7 @@ date_range = st.select_slider('Slide to see the clusters moving through time usi
 
 cases_state_date = cases_state[(cases_state['date'] >= date_range[0]) & (cases_state['date'] < date_range[1])]
 deaths_state_date = deaths_state[(deaths_state['date'] >= date_range[0]) & (deaths_state['date'] < date_range[1])]
-vax_state_date = vax_state[(vax_state['date'] >= date_range[0]) & (vax_state['date'] < date_range[1])]
+vax_state_date = vax_state[(vax_state['date'] < date_range[1])]
 
 cases = []
 vaccination_rates = []

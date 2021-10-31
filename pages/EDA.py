@@ -146,7 +146,17 @@ def app():
     st.plotly_chart(plot)
 
     st.markdown('''
-    There appears to be a weak correlation, hinting that Covid cases may not be a totally socio-economic one. As the average income of the state increases, the more populated it generally is, which would mean more cases. The population is a strong **confounding variable**.
+    There appears to be a weak correlation, hinting that Covid cases may not be a totally socio-economic one. As the average income of the state increases, the more populated it generally is, which would mean more cases.
+    The population seems to be a strong **confounding variable**. Hence, we can account for the influence of population and re-plot.
+    ''')
+    cases_income['cases_per_10k'] = cases_income['cases_new'] / (cases_income['pop'] / 10000)
+    plot = px.scatter(cases_income, x='income', y='cases_per_10k', color='cases_new', size='pop', labels={'cases_per_10k':'Total Cases in State per 10k people', 'income': 'Average Income of State'})
+    st.plotly_chart(plot)
+
+    st.markdown('''
+    By accounting for the population and considering the income of the state with the cases per 10k of the population, there
+    exists no trend whatsoever. This suggests that the third population variable can make or break a trend. In this case,
+    Covid-19 does not appear to be a socio-economic issue.
     ''')
     # =============================================================================
     # Is there a correlation between vaccination and daily cases at a national level
@@ -162,7 +172,7 @@ def app():
     merged_data_frame = pd.merge(filtered_my_cases, corr_vaccine, on=['date'])
     corr_merged_data_frame = merged_data_frame.corr()
 
-    fig = px.scatter(merged_data_frame, x='cumul_vaccine', y='cases_new', trendline='ols')
+    fig = px.scatter(merged_data_frame, x='cumul_vaccine', y='cases_new', trendline='ols', labels={'cumul_vaccine':'Total Vaccinated', 'cases_new':'Total Cases'})
     st.plotly_chart(fig)
 
     st.markdown('''
@@ -181,7 +191,7 @@ def app():
 
         state_merged = state_cases.merge(state_vax, on=['date'])
 
-        lineplot = px.line(state_merged, x='cum', y='cases_new', title=f'{state} Cumulative Vaccination vs Daily Cases')
+        lineplot = px.line(state_merged, x='cum', y='cases_new', title=f'{state} Cumulative Vaccination vs Daily Cases', labels={'cum':'Cumulative Vaccination', 'cases_new':'Daily Cases'})
         st.write(lineplot)
 
     vaccination_dailycases('Selangor')
@@ -222,16 +232,6 @@ def app():
         corr = state_merged[['daily_full', 'cases_new']].corr()
 
         return corr,vax_state_temp,state_merged
-
-    """st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')
-
-    corr_selangor1,vax_percentage_selangor1 = cases_vax_corr('Selangor',1)
-    corr_selangor2,vax_percentage_selangor2 = cases_vax_corr('Selangor',2)
-    corr_sabah1,vax_percentage_sabah1 = cases_vax_corr('Sabah',1)
-    corr_sabah2,vax_percentage_sabah2 = cases_vax_corr('Sabah',2)
-    corr_sarawak1,vax_percentage_sarawak1= cases_vax_corr('Sarawak',1)
-    corr_sarawak2,vax_percentage_sarawak2= cases_vax_corr('Sarawak',2)"""
-
 
     st.write('''For each state, calculate the correlation after 5%, 10% and 15% of the population has been vaccinated. ''')
     corr_selangor1,vax_percentage_selangor1,selangor_state_merged1 = cases_vax_corr('Selangor',1)
@@ -318,7 +318,7 @@ def app():
     clusters_singlestate = remove_outliers(clusters_singlestate, 'cases_total')
     st.plotly_chart(px.box(clusters_singlestate, x='single_state', y='cases_total', points=False))
 
-    st.markdown(''''
+    st.markdown('''
     ### What type of Covid-19 clusters are most prevalent?
     Across the country, clusters form in schools, workplaces, places of worship, etc. But the question is which ones are most drastic?
     ''')

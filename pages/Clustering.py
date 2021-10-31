@@ -187,7 +187,7 @@ def app():
 
     cases_deaths_vaccinations['cluster'] = y_clusters
 
-    dbscanclusters = px.scatter(cases_deaths_vaccinations, x="cases", y="deaths", color="cluster")
+    dbscanclusters = px.scatter(cases_deaths_vaccinations, x="cases", y="deaths", color="cluster", labels={"cases": "Cases Per 10k", "deaths": "Deaths Per 10k"})
     st.plotly_chart(dbscanclusters)
 
     st.markdown('''
@@ -223,7 +223,7 @@ def app():
 
     cases_state_date = cases_state[(cases_state['date'] >= date_range[0]) & (cases_state['date'] < date_range[1])]
     deaths_state_date = deaths_state[(deaths_state['date'] >= date_range[0]) & (deaths_state['date'] < date_range[1])]
-    vax_state_date = vax_state[(vax_state['date'] >= date_range[0]) & (vax_state['date'] < date_range[1])]
+    vax_state_date = vax_state[(vax_state['date'] < date_range[1])]
 
     cases = []
     vaccinations = []
@@ -275,7 +275,7 @@ def app():
 
     cases_state_date = cases_state[(cases_state['date'] >= date_range[0]) & (cases_state['date'] < date_range[1])]
     deaths_state_date = deaths_state[(deaths_state['date'] >= date_range[0]) & (deaths_state['date'] < date_range[1])]
-    vax_state_date = vax_state[(vax_state['date'] >= date_range[0]) & (vax_state['date'] < date_range[1])]
+    vax_state_date = vax_state[(vax_state['date'] < date_range[1])]
 
     cases = []
     vaccination_rates = []

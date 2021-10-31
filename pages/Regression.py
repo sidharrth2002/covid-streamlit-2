@@ -122,22 +122,18 @@ def app():
                                 'excess_mortality_cumulative_absolute','excess_mortality_cumulative','excess_mortality','excess_mortality_cumulative_per_million',
                                 ], inplace=True)
     before_pp_tests_state = tests_state.copy()
-    st.markdown(''''
+    st.markdown('''
     ## Regression
     ''')
     st.markdown('''
-        ### Can we predict the daily vaccination numbers?
-
+        ### Can we predict the daily vaccination numbers in a multivariate manner?
+        Assuming that vaccination numbers depend on various external factors such as government incentives, spikes in cases, etc., could we predict the daily vaccination numbers using time-series regression models?
         The number of people being vaccinated daily can depend on a lot of factors
         To answer this, we test:\n
         1. Multivariate LSTM time-series analysis\n
         2. Multivariate Support Vector Regression
     ''')
 
-    st.markdown('''
-    ### Can we predict the daily vaccination numbers?
-    Assuming that vaccination numbers depend on various external factors such as government incentives, spikes in cases, etc., could we predict the daily vaccination numbers using time-series regression models?
-    ''')
     # vax_population = vax_malaysia.merge(population, on='state')
     malaysia_population = population[population['state'] == 'Malaysia']['pop'].iloc[0]
     vax_malaysia['cumul'] = vax_malaysia['daily_full'].cumsum()
