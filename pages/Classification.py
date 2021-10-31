@@ -39,6 +39,8 @@ from imblearn.over_sampling import SMOTE
 # import train_test_split
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.metrics import roc_curve, auc
 
 def app():
     # =============================================================================
@@ -133,28 +135,38 @@ def app():
     cases_testing_deaths_vax_checkins['ind_checkins_class'] = pd.cut(cases_testing_deaths_vax_checkins['unique_ind'], 3, labels=['Low', 'Medium', 'High'])
     cases_testing_deaths_vax_checkins.drop(['unique_ind'], axis=1, inplace=True)
 
-    features = ["cases_new", "cases_import",	"cases_recovered", "cases_active", "cases_cluster",	"cases_pvax", "cases_fvax",	"cases_child","cases_adolescent", "cases_adult", "cases_elderly", "total_testing", "deaths_new", "daily_full", "ind_checkins_class"]
+    X = cases_testing_deaths_vax_checkins.drop(columns=['date', 'ind_checkins_class'])
+    X_scaler = MinMaxScaler()
+    X_scaled = X_scaler.fit_transform(X)
+    y_encoder = LabelEncoder()
+    y = cases_testing_deaths_vax_checkins['ind_checkins_class']
+    y_encoded = y_encoder.fit_transform(y)
+
+    features = ["cases_new", "cases_import", "cases_recovered", "cases_active", "cases_cluster",	"cases_pvax", "cases_fvax",	"cases_child","cases_adolescent", "cases_adult", "cases_elderly", "total_testing", "deaths_new", "daily_full"]
 
     filtered = cases_testing_deaths_vax_checkins[features]
+    filtered['ind_checkins_class'] = y_encoded
     filtered['date'] = cases_testing_deaths_vax_checkins['date']
     filtered['date'] = pd.to_datetime(filtered['date'])
     filtered.set_index('date', inplace=True)
+
     # SMOTE dataset
-    X_scaler = MinMaxScaler()
+    # X_scaler = MinMaxScaler()
     X = filtered.drop(columns=['ind_checkins_class'])
-    X_scaled = X_scaler.fit_transform(X)
     y = filtered['ind_checkins_class']
-    smt = SMOTE(random_state=42, k_neighbors=3)
-    X_smt, y_smt = smt.fit_resample(X_scaled, y)
 
     # train_test_split
-    X_train, X_test, y_train, y_test = train_test_split(X_smt, y_smt, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    smt = SMOTE(random_state=42, k_neighbors=3)
+    X_smt, y_smt = smt.fit_resample(X_train, y_train)
 
     classification_model = st.selectbox('Which classification model do you want to test?', ['Random Forest Classifier', 'Logistic Regression', 'Naive Bayes'])
 
     if classification_model == 'Random Forest Classifier':
         # Random Forest Classifier
-        rf = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=0)
+        best_params = {'criterion': 'entropy', 'max_depth': 7, 'max_features': 'auto', 'n_estimators': 100}
+        rf = RandomForestClassifier(**best_params)
         rf.fit(X_train, y_train)
         # get score
         accuracy = rf.score(X_test, y_test)
@@ -169,6 +181,27 @@ def app():
         # plot confusion matrix with plotly
         cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred), x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred), colorscale='Viridis', showscale=True)
         st.plotly_chart(cf)
+
+        clf = OneVsRestClassifier(rf)
+        clf.fit(X_train, y_train)
+        pred = clf.predict(X_test)
+        pred_prob = clf.predict_proba(X_test)
+
+        fpr = {}
+        tpr = {}
+        thresh = {}
+
+        n_class = 3
+
+        for i in range(n_class):
+            fpr[i], tpr[i], thresh[i] = roc_curve(y_test, pred_prob[:, i], pos_label=i)
+
+        fig, ax = plt.subplots(figsize=(5, 5))
+
+        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Class 0 vs Rest')
+        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Class 1 vs Rest')
+        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Class 2 vs Rest')
+        st.pyplot(fig)
 
     elif classification_model == 'Logistic Regression':
         log = LogisticRegression()
@@ -185,6 +218,28 @@ def app():
         # plot confusion matrix with plotly
         cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
         st.plotly_chart(cf)
+
+        clf = OneVsRestClassifier(log)
+        clf.fit(X_train, y_train)
+        pred = clf.predict(X_test)
+        pred_prob = clf.predict_proba(X_test)
+
+        fpr = {}
+        tpr = {}
+        thresh = {}
+
+        n_class = 3
+
+        for i in range(n_class):
+            fpr[i], tpr[i], thresh[i] = roc_curve(y_test, pred_prob[:, i], pos_label=i)
+
+        fig, ax = plt.subplots(figsize=(5, 5))
+
+        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Class 0 vs Rest')
+        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Class 1 vs Rest')
+        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Class 2 vs Rest')
+        st.pyplot(fig)
+
 
     else:
         gnb = GaussianNB()
@@ -203,6 +258,28 @@ def app():
         cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
         st.plotly_chart(cf)
 
+        clf = OneVsRestClassifier(gnb)
+        clf.fit(X_train, y_train)
+        pred = clf.predict(X_test)
+        pred_prob = clf.predict_proba(X_test)
+
+        fpr = {}
+        tpr = {}
+        thresh = {}
+
+        n_class = 3
+
+        for i in range(n_class):
+            fpr[i], tpr[i], thresh[i] = roc_curve(y_test, pred_prob[:, i], pos_label=i)
+
+        fig, ax = plt.subplots(figsize=(5, 5))
+
+        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Class 0 vs Rest')
+        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Class 1 vs Rest')
+        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Class 2 vs Rest')
+        st.pyplot(fig)
+
+
     st.markdown('''
     ### Can we predict the type of vaccine based on the symptoms?
     Some vaccines produce more of a certain symptom than others. Hence, would it be possible to predict whether the vaccine is Pfizer, Sinovac, Astra, etc. based purely on the symptoms reported each day.
@@ -213,7 +290,6 @@ def app():
     vaccine_prediction['vaxtype_label'] = LabelEncoder().fit_transform(vaccine_prediction['vaxtype'])
     vaccine_prediction.drop(columns=['daily_total'], inplace=True)
 
-    
     X_scaler = MinMaxScaler()
     X = vaccine_prediction.drop(columns=['date', 'vaxtype', 'vaxtype_label'])
     X_scaled = X_scaler.fit_transform(X)
@@ -233,7 +309,6 @@ def app():
     features = ['daily_nonserious_mysj', 'daily_nonserious_npra', 'daily_serious_npra', 'daily_nonserious_mysj_dose1', 'd1_site_pain', 'd1_site_swelling', 'd1_site_redness', 'd1_headache', 'd1_muscle_pain', 'd1_joint_pain', 'd1_weakness', 'd1_fever', 'd1_chills', 'd1_rash', 'd2_site_pain', 'd2_site_swelling', 'd2_headache', 'd2_joint_pain', 'd2_fever', 'd2_chills']
 
     X_transformed = X[features]
-    X_scaler = MinMaxScaler()
     X_scaled = X_scaler.fit_transform(X_transformed)
     # X_transformed = pd.DataFrame(rfe.transform(X_scaled), columns=X.columns[rfe.support_])
 
@@ -256,6 +331,28 @@ def app():
         # confusion matrix
         cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['Pfizer', 'Sinovac', 'Astrazeneca', 'Cansino'], y=['True Pfizer', 'True Sinovac', 'True Astrazeneca', 'True Cansino'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
         st.plotly_chart(cf)
+
+        clf = OneVsRestClassifier(logreg)
+        clf.fit(X_train, y_train)
+        pred = clf.predict(X_test)
+        pred_prob = clf.predict_proba(X_test)
+
+        fpr = {}
+        tpr = {}
+        thresh = {}
+
+        n_class = 4
+
+        for i in range(n_class):
+            fpr[i], tpr[i], thresh[i] = roc_curve(y_test, pred_prob[:, i], pos_label=i)
+
+        fig, ax = plt.subplots(figsize=(5, 5))
+
+        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Pfizer')
+        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Sinovac')
+        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Astrazeneca')
+        ax.plot(fpr[3], tpr[3], linestyle='--',color='red', label='Cansino')
+        st.pyplot(fig)
 
     elif classification_model2 == 'Support Vector Classification':
         # defining parameter range
@@ -283,3 +380,25 @@ def app():
         # confusion matrix
         cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['Pfizer', 'Sinovac', 'Astrazeneca', 'Cansino'], y=['True Pfizer', 'True Sinovac', 'True Astrazeneca', 'True Cansino'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
         st.plotly_chart(cf)
+
+        clf = OneVsRestClassifier(svc)
+        clf.fit(X_train, y_train)
+        pred = clf.predict(X_test)
+        pred_prob = clf.predict_proba(X_test)
+
+        fpr = {}
+        tpr = {}
+        thresh = {}
+
+        n_class = 4
+
+        for i in range(n_class):
+            fpr[i], tpr[i], thresh[i] = roc_curve(y_test, pred_prob[:, i], pos_label=i)
+
+        fig, ax = plt.subplots(figsize=(5, 5))
+
+        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Pfizer')
+        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Sinovac')
+        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Astrazeneca')
+        ax.plot(fpr[3], tpr[3], linestyle='--',color='red', label='Cansino')
+        st.pyplot(fig)

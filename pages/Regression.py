@@ -35,6 +35,10 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import mean_squared_error,mean_absolute_error
 from sklearn.ensemble import RandomForestRegressor
 from boruta import BorutaPy
+# import Ridge
+from sklearn.linear_model import Ridge
+from sklearn.ensemble import GradientBoostingRegressor
+
 
 def app():
 
@@ -211,7 +215,8 @@ def app():
 
         X_train, X_test, y_train, y_test = train_test_split(X_svr, y_svr, test_size=0.15, random_state=42, shuffle=True)
 
-        svr = SVR(kernel='rbf', C=1e3, gamma=0.1)
+        params = {'C': 10, 'degree': 2, 'kernel': 'poly'}
+        svr = SVR(**params)
         svr.fit(X_train, y_train)
 
         predicted_vaccination = svr.predict(X_test)
@@ -282,39 +287,140 @@ def app():
     Covid-19 deaths are definitely dependent on external factors, so the question asked is whether we can train a regression model to predict Covid-19 deaths.
     ''')
 
-    dataset1 = before_pp_cases_malaysia.copy()
-    dataset2 = before_pp_deaths_malaysia.copy()
-    dataset2 = dataset2[['date','deaths_new']]
-    dataset3 = before_pp_tests_malaysia.copy()
-    dataset4 = before_pp_vax_malaysia.copy()
-    total_dataset = dataset1.merge(dataset2, how='inner', on=['date'] )
-    total_dataset.fillna(0, inplace=True)
-    total_dataset = total_dataset.merge(dataset3, how='inner', on=['date'] )
-    total_dataset.fillna(0, inplace=True)
-    total_dataset = total_dataset.merge(dataset4, how='inner', on=['date'] )
-    total_dataset.fillna(0, inplace=True)
+    reg_model = st.selectbox('Regression Model', ['Linear Regression', 'Ridge Regression', 'Support Vector Regression', 'Gradient Boosting Regression'])
 
-    features = ['cases_recovered', 'cases_active', 'cases_pvax', 'cases_child', 'cases_adolescent', 'cases_elderly', 'daily_partial', 'cumul_partial', 'cumul_full', 'cumul', 'cansino']
+    deaths_malaysia_rolling = deaths_malaysia.copy()
+    deaths_malaysia_rolling['5_day_deaths'] = deaths_malaysia_rolling['deaths_new'].rolling(5).mean()
+    deaths_malaysia_rolling['10_day_deaths'] = deaths_malaysia_rolling['deaths_new'].rolling(10).mean()
+    deaths_malaysia_rolling['15_day_deaths'] = deaths_malaysia_rolling['deaths_new'].rolling(15).mean()
+    deaths_malaysia_rolling['20_day_deaths'] = deaths_malaysia_rolling['deaths_new'].rolling(20).mean()
+    deaths_malaysia_rolling['25_day_deaths'] = deaths_malaysia_rolling['deaths_new'].rolling(25).mean()
+    deaths_malaysia_rolling['30_day_deaths'] = deaths_malaysia_rolling['deaths_new'].rolling(30).mean()
+    deaths_malaysia_rolling['60_day_deaths'] = deaths_malaysia_rolling['deaths_new'].rolling(60).mean()
+    deaths_malaysia_rolling.fillna(0, inplace=True)
 
-    train_model_dataset = total_dataset[features]
-    train_model_dataset['deaths_new'] = total_dataset['deaths_new']
+    cases_malaysia_rolling = cases_malaysia.copy()
+    cases_malaysia_rolling['5_day_cases'] = cases_malaysia_rolling['cases_new'].rolling(5).mean()
+    cases_malaysia_rolling['10_day_cases'] = cases_malaysia_rolling['cases_new'].rolling(10).mean()
+    cases_malaysia_rolling['15_day_cases'] = cases_malaysia_rolling['cases_new'].rolling(15).mean()
+    cases_malaysia_rolling['20_day_cases'] = cases_malaysia_rolling['cases_new'].rolling(20).mean()
+    cases_malaysia_rolling['25_day_cases'] = cases_malaysia_rolling['cases_new'].rolling(25).mean()
+    cases_malaysia_rolling['30_day_cases'] = cases_malaysia_rolling['cases_new'].rolling(30).mean()
+    cases_malaysia_rolling['60_day_cases'] = cases_malaysia_rolling['cases_new'].rolling(60).mean()
+    cases_malaysia_rolling.fillna(0, inplace=True)
 
-    X = train_model_dataset.drop(['deaths_new'], axis=1)  
-    X = MinMaxScaler().fit_transform(X)
-    y = train_model_dataset['deaths_new']  
-    y = MinMaxScaler().fit_transform(y.values.reshape(-1, 1))
+    all_data = pd.merge(cases_malaysia_rolling, deaths_malaysia_rolling, on='date')
+    all_data = all_data.merge(before_pp_vax_malaysia, on='date')
+    all_data = all_data.merge(before_pp_tests_malaysia, on='date')
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=2) 
+    best_features = ['cases_recovered', 'cases_active', 'cases_pvax', 'cases_child', 'cases_adolescent', 'cases_elderly', '5_day_cases', '10_day_cases', '15_day_cases', '20_day_cases', '25_day_cases', '30_day_cases', '5_day_deaths', '10_day_deaths', 'daily_partial']
+    X = all_data[best_features]
+    y = all_data['deaths_new']
 
-    regressor = DecisionTreeRegressor(max_depth=2, criterion="mae", splitter="best")  
-    regressor.fit(X_train, y_train) 
-    pred = regressor.predict(X_test)
+    X_scaler = MinMaxScaler()
+    X_scaled = X_scaler.fit_transform(X)
 
-    mae = round(mean_absolute_error(y_test, pred),4)
-    mse = round(mean_squared_error(y_test, pred),4)
+    y_scaler = MinMaxScaler()
+    y_scaled = y_scaler.fit_transform(y.values.reshape(-1, 1))
 
-    st.write(f"DecisionTreeRegressor MAE: {mae}")
-    st.write(f"DecisionTreeRegressor MSE: {mse}")
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y_scaled, test_size=0.2, random_state=42)
+
+    if reg_model == 'Linear Regression':
+        lr = LinearRegression()
+        lr.fit(X_train, y_train)
+
+        y_pred = lr.predict(X_test)
+        st.write('Mean Squared Error ' + str(mean_squared_error(y_test, y_pred)))
+
+        time_series2, _ = plt.subplots(1,1)
+        ax = time_series2.add_subplot(1, 1, 1)
+        ax.plot(y_pred, label='Predicted', color='blue')
+        ax.plot(y_test, label='Actual', color='red')
+        time_series2.legend()
+        st.pyplot(time_series2)
+
+    elif reg_model == 'Ridge Regression':
+        best_params = {'alpha': 0.1}
+        rr = Ridge(**best_params)
+
+        rr.fit(X_train, y_train)
+
+        st.write('Mean Squared Error ' + str(mean_squared_error(y_test, y_pred)))
+
+        y_pred = rr.predict(X_test)
+
+        time_series2, _ = plt.subplots(1,1)
+        ax = time_series2.add_subplot(1, 1, 1)
+        ax.plot(y_pred, label='Predicted', color='blue')
+        ax.plot(y_test, label='Actual', color='red')
+        time_series2.legend()
+        st.pyplot(time_series2)
+
+    elif reg_model == 'Support Vector Regression':
+        best_params = {'C': 1000, 'gamma': 0.001, 'kernel': 'rbf'}
+        svr = SVR(**best_params)
+        svr.fit(X_train, y_train)
+
+        y_pred = svr.predict(X_test)
+
+        print(f'Mean Squared Error of SVR {mean_squared_error(y_test, y_pred)}')
+
+        time_series2, _ = plt.subplots(1,1)
+        ax = time_series2.add_subplot(1, 1, 1)
+        ax.plot(y_pred, label='Predicted', color='blue')
+        ax.plot(y_test, label='Actual', color='red')
+        time_series2.legend()
+        st.pyplot(time_series2)
+
+    elif reg_model == 'Gradient Boosting Regressor':
+        best_params = {'max_depth': 10, 'n_estimators': 100, 'subsample': 0.1}
+        gbr = GradientBoostingRegressor(**best_params)
+        gbr.fit(X_train, y_train)
+
+        y_pred = gbr.predict(X_test)
+
+        print(f'Mean Squared Error of GBR {mean_squared_error(y_test, y_pred)}')
+
+        time_series2, _ = plt.subplots(1,1)
+        ax = time_series2.add_subplot(1, 1, 1)
+        ax.plot(y_pred, label='Predicted', color='blue')
+        ax.plot(y_test, label='Actual', color='red')
+        time_series2.legend()
+        st.pyplot(time_series2)
+
+    # dataset1 = before_pp_cases_malaysia.copy()
+    # dataset2 = before_pp_deaths_malaysia.copy()
+    # dataset2 = dataset2[['date','deaths_new']]
+    # dataset3 = before_pp_tests_malaysia.copy()
+    # dataset4 = before_pp_vax_malaysia.copy()
+    # total_dataset = dataset1.merge(dataset2, how='inner', on=['date'] )
+    # total_dataset.fillna(0, inplace=True)
+    # total_dataset = total_dataset.merge(dataset3, how='inner', on=['date'] )
+    # total_dataset.fillna(0, inplace=True)
+    # total_dataset = total_dataset.merge(dataset4, how='inner', on=['date'] )
+    # total_dataset.fillna(0, inplace=True)
+
+    # features = ['cases_recovered', 'cases_active', 'cases_pvax', 'cases_child', 'cases_adolescent', 'cases_elderly', 'daily_partial', 'cumul_partial', 'cumul_full', 'cumul', 'cansino']
+
+    # train_model_dataset = total_dataset[features]
+    # train_model_dataset['deaths_new'] = total_dataset['deaths_new']
+
+    # X = train_model_dataset.drop(['deaths_new'], axis=1)
+    # X = MinMaxScaler().fit_transform(X)
+    # y = train_model_dataset['deaths_new']
+    # y = MinMaxScaler().fit_transform(y.values.reshape(-1, 1))
+
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=2)
+
+    # regressor = DecisionTreeRegressor(max_depth=2, criterion="mae", splitter="best")
+    # regressor.fit(X_train, y_train)
+    # pred = regressor.predict(X_test)
+
+    # mae = round(mean_absolute_error(y_test, pred),4)
+    # mse = round(mean_squared_error(y_test, pred),4)
+
+    # st.write(f"DecisionTreeRegressor MAE: {mae}")
+    # st.write(f"DecisionTreeRegressor MSE: {mse}")
 
     st.markdown('''
     ### Can we predict mortality numbers for Melaka, Negeri Sembilan, Perlis, Selangor and W.P. Putrajaya?
