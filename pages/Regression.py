@@ -151,7 +151,7 @@ def app():
 
     features = ["cases_recovered", "cases_active", "cases_cluster",	"cases_pvax", "cases_fvax", "total_testing", "deaths_new", "icu_covid", "daily"]
 
-    st.write('The best features are ' + str(features))
+    feat_display = st.multiselect('Optimal Feature Set', features, default=features)
 
     num_features = len(features) - 1
     filtered = cases_testing_deaths_vax[features]
@@ -321,7 +321,7 @@ def app():
 
     best_features = ['cases_recovered', 'cases_active', 'cases_pvax', 'cases_child', 'cases_adolescent', 'cases_elderly', '5_day_cases', '10_day_cases', '15_day_cases', '20_day_cases', '25_day_cases', '30_day_cases', '5_day_deaths', '10_day_deaths', 'daily_partial']
 
-    st.write('The best features are:' + str(best_features))
+    feat_display = st.multiselect('Optimal Feature Set', best_features, default=best_features)
 
     X = all_data[best_features]
     y = all_data['deaths_new']

@@ -144,6 +144,8 @@ def app():
 
     features = ["cases_new", "cases_import", "cases_recovered", "cases_active", "cases_cluster",	"cases_pvax", "cases_fvax",	"cases_child","cases_adolescent", "cases_adult", "cases_elderly", "total_testing", "deaths_new", "daily_full"]
 
+    feat_display = st.multiselect('Optimal Feature Set: ', features)
+
     filtered = cases_testing_deaths_vax_checkins[features]
     filtered['ind_checkins_class'] = y_encoded
     filtered['date'] = cases_testing_deaths_vax_checkins['date']
@@ -307,6 +309,8 @@ def app():
     y = y_encoder.fit_transform(vaccine_prediction['vaxtype'])
 
     features = ['daily_nonserious_mysj', 'daily_nonserious_npra', 'daily_serious_npra', 'daily_nonserious_mysj_dose1', 'd1_site_pain', 'd1_site_swelling', 'd1_site_redness', 'd1_headache', 'd1_muscle_pain', 'd1_joint_pain', 'd1_weakness', 'd1_fever', 'd1_chills', 'd1_rash', 'd2_site_pain', 'd2_site_swelling', 'd2_headache', 'd2_joint_pain', 'd2_fever', 'd2_chills']
+
+    feat_display = st.multiselect('Optimal Feature Set: ', features, default=features)
 
     X_transformed = X[features]
     X_scaled = X_scaler.fit_transform(X_transformed)
