@@ -150,6 +150,9 @@ def app():
     cases_testing_deaths_vax['cumul'] = cases_testing_deaths_vax['daily'].cumsum()
 
     features = ["cases_recovered", "cases_active", "cases_cluster",	"cases_pvax", "cases_fvax", "total_testing", "deaths_new", "icu_covid", "daily"]
+
+    st.write('The best features are ' + str(features))
+
     num_features = len(features) - 1
     filtered = cases_testing_deaths_vax[features]
     filtered['date'] = cases_testing_deaths_vax['date']
@@ -285,6 +288,7 @@ def app():
     st.markdown('''
     ### Can we predict Covid-19 mortality numbers across the nation?
     Covid-19 deaths are definitely dependent on external factors, so the question asked is whether we can train a regression model to predict Covid-19 deaths.
+    To supplement static attributes, we introduce rolling averages of past data as features to our predictive models. An example of rolling averages:
     ''')
 
     reg_model = st.selectbox('Regression Model', ['Linear Regression', 'Ridge Regression', 'Support Vector Regression', 'Gradient Boosting Regression'])
@@ -313,7 +317,12 @@ def app():
     all_data = all_data.merge(before_pp_vax_malaysia, on='date')
     all_data = all_data.merge(before_pp_tests_malaysia, on='date')
 
+    st.write(all_data.head())
+
     best_features = ['cases_recovered', 'cases_active', 'cases_pvax', 'cases_child', 'cases_adolescent', 'cases_elderly', '5_day_cases', '10_day_cases', '15_day_cases', '20_day_cases', '25_day_cases', '30_day_cases', '5_day_deaths', '10_day_deaths', 'daily_partial']
+
+    st.write('The best features are:' + str(best_features))
+
     X = all_data[best_features]
     y = all_data['deaths_new']
 
