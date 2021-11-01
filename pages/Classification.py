@@ -144,7 +144,7 @@ def app():
 
     features = ["cases_new", "cases_import", "cases_recovered", "cases_active", "cases_cluster",	"cases_pvax", "cases_fvax",	"cases_child","cases_adolescent", "cases_adult", "cases_elderly", "total_testing", "deaths_new", "daily_full"]
 
-    feat_display = st.multiselect('Optimal Feature Set: ', features)
+    feat_display = st.multiselect('Optimal Feature Set: ', features, default=features)
 
     filtered = cases_testing_deaths_vax_checkins[features]
     filtered['ind_checkins_class'] = y_encoded
@@ -361,16 +361,9 @@ def app():
     elif classification_model2 == 'Support Vector Classification':
         # defining parameter range
         best_params = {'C': 1000, 'gamma': 1, 'kernel': 'rbf'}
-        param_grid = {'C': [0.1, 1, 10, 100, 1000],
-              'gamma': [1, 0.1, 0.01, 0.001, 0.0001],
-              'kernel': ['linear', 'rbf']}
- 
-        grid = GridSearchCV(SVC(), param_grid, refit = True, verbose = 3)
- 
+
         # fitting the model for grid search
-        grid.fit(X_smt, y_smt)
-        svc = SVC(**{'C': 1000, 'gamma': 1, 'kernel': 'rbf'})
-        svc = SVC(**best_params)
+        svc = SVC(**best_params, probability=True)
         svc.fit(X_smt, y_smt)
 
         st.write(f'Best Model {svc}')

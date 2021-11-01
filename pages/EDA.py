@@ -41,6 +41,7 @@ def app():
     st.title("A Comprehensive Exploration of Covid-19 in Malaysia 🇲🇾")
     st.subheader("Sidharrth Nagappan, Eugene Kan, Tan Zhi Hang")
     st.image('./covid-malaysia.jpeg')
+    st.markdown('*Image from The Star*')
 
     st.markdown("This exploration will conduct a comprehensive analysis of Covid-19 in Malaysia, while evaluating the performance of the nation in combatting the pandemic and putting this performance up against other countries in South East Asia. Covid-19 has taken the world by storm and we use open data to extract critical insights.")
 

@@ -203,10 +203,11 @@ def app():
         predicted_vaccination = y_scaler.inverse_transform(predicted_vaccination)
 
         # line plot
-        time_series, _ = plt.subplots(1,1)
-        ax = time_series.add_subplot(1, 1, 1)
+        time_series, ax = plt.subplots(1,1)
         ax.plot(list(range(len(predicted_vaccination))), predicted_vaccination, label='Predicted', color='blue')
         ax.plot(list(range(len(y_test))), y_scaler.inverse_transform(y_test.reshape(-1,1)), label='Actual', color='red')
+        ax.set_xlabel('Days')
+        ax.set_ylabel('Daily Vaccination Number')
         time_series.legend()
         st.pyplot(time_series)
 
@@ -226,11 +227,14 @@ def app():
         st.write(f"Mean Squared Error: {mean_squared_error(y_test, predicted_vaccination)}")
         predicted_vaccination = y_scaler_svr.inverse_transform(predicted_vaccination.reshape(-1,1))
 
+        st.write(predicted_vaccination)
+
         # line plot
-        time_series2, _ = plt.subplots(1,1)
-        ax = time_series2.add_subplot(1, 1, 1)
+        time_series2, ax = plt.subplots(1,1)
         ax.plot(list(range(len(predicted_vaccination))), predicted_vaccination, label='Predicted', color='blue')
         ax.plot(list(range(len(y_test))), y_scaler_svr.inverse_transform(y_test.reshape(-1,1)), label='Actual', color='red')
+        ax.set_xlabel('Days')
+        ax.set_ylabel('Daily Vaccination Number')
         time_series2.legend()
         st.pyplot(time_series2)
 
@@ -341,10 +345,11 @@ def app():
         y_pred = lr.predict(X_test)
         st.write('Mean Squared Error ' + str(mean_squared_error(y_test, y_pred)))
 
-        time_series2, _ = plt.subplots(1,1)
-        ax = time_series2.add_subplot(1, 1, 1)
+        time_series2, ax = plt.subplots(1,1)
         ax.plot(y_pred, label='Predicted', color='blue')
         ax.plot(y_test, label='Actual', color='red')
+        ax.set_xlabel('Day')
+        ax.set_ylabel('Deaths')
         time_series2.legend()
         st.pyplot(time_series2)
 
@@ -354,14 +359,15 @@ def app():
 
         rr.fit(X_train, y_train)
 
-        st.write('Mean Squared Error ' + str(mean_squared_error(y_test, y_pred)))
-
         y_pred = rr.predict(X_test)
 
-        time_series2, _ = plt.subplots(1,1)
-        ax = time_series2.add_subplot(1, 1, 1)
+        st.write('Mean Squared Error ' + str(mean_squared_error(y_test, y_pred)))
+
+        time_series2, ax = plt.subplots(1,1)
         ax.plot(y_pred, label='Predicted', color='blue')
         ax.plot(y_test, label='Actual', color='red')
+        ax.set_xlabel('Day')
+        ax.set_ylabel('Deaths')
         time_series2.legend()
         st.pyplot(time_series2)
 
@@ -372,12 +378,13 @@ def app():
 
         y_pred = svr.predict(X_test)
 
-        print(f'Mean Squared Error of SVR {mean_squared_error(y_test, y_pred)}')
+        st.write(f'Mean Squared Error of SVR {mean_squared_error(y_test, y_pred)}')
 
-        time_series2, _ = plt.subplots(1,1)
-        ax = time_series2.add_subplot(1, 1, 1)
+        time_series2, ax = plt.subplots(1,1)
         ax.plot(y_pred, label='Predicted', color='blue')
         ax.plot(y_test, label='Actual', color='red')
+        ax.set_xlabel('Day')
+        ax.set_ylabel('Deaths')
         time_series2.legend()
         st.pyplot(time_series2)
 
@@ -388,12 +395,13 @@ def app():
 
         y_pred = gbr.predict(X_test)
 
-        print(f'Mean Squared Error of GBR {mean_squared_error(y_test, y_pred)}')
+        st.write(f'Mean Squared Error of GBR {mean_squared_error(y_test, y_pred)}')
 
-        time_series2, _ = plt.subplots(1,1)
-        ax = time_series2.add_subplot(1, 1, 1)
+        time_series2, ax = plt.subplots(1,1)
         ax.plot(y_pred, label='Predicted', color='blue')
         ax.plot(y_test, label='Actual', color='red')
+        ax.set_xlabel('Day')
+        ax.set_ylabel('Deaths')
         time_series2.legend()
         st.pyplot(time_series2)
 
