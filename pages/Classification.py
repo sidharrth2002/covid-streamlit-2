@@ -169,7 +169,7 @@ def app():
         # Random Forest Classifier
         best_params = {'criterion': 'entropy', 'max_depth': 7, 'max_features': 'auto', 'n_estimators': 100}
         rf = RandomForestClassifier(**best_params)
-        rf.fit(X_train, y_train)
+        rf.fit(X_smt, y_smt)
         # get score
         accuracy = rf.score(X_test, y_test)
         # F1-Score
@@ -181,11 +181,11 @@ def app():
         y_pred = rf.predict(X_test)
 
         # plot confusion matrix with plotly
-        cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred), x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred), colorscale='Viridis', showscale=True)
+        cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Low', 'Medium'], y=['True High', 'True Low', 'True Medium'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
         st.plotly_chart(cf)
 
         clf = OneVsRestClassifier(rf)
-        clf.fit(X_train, y_train)
+        clf.fit(X_smt, y_smt)
         pred = clf.predict(X_test)
         pred_prob = clf.predict_proba(X_test)
 
@@ -200,14 +200,15 @@ def app():
 
         fig, ax = plt.subplots(figsize=(5, 5))
 
-        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Class 0 vs Rest')
-        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Class 1 vs Rest')
-        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Class 2 vs Rest')
+        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='High')
+        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Low')
+        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Medium')
+        ax.legend()
         st.pyplot(fig)
 
     elif classification_model == 'Logistic Regression':
         log = LogisticRegression()
-        log.fit(X_train, y_train)
+        log.fit(X_smt, y_smt)
         accuracy = log.score(X_test, y_test)
         f1 = f1_score(y_test, log.predict(X_test), average='weighted')
 
@@ -218,7 +219,7 @@ def app():
         y_pred = log.predict(X_test)
 
         # plot confusion matrix with plotly
-        cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
+        cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Low', 'Medium'], y=['True High', 'True Low', 'True Medium'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
         st.plotly_chart(cf)
 
         clf = OneVsRestClassifier(log)
@@ -237,15 +238,16 @@ def app():
 
         fig, ax = plt.subplots(figsize=(5, 5))
 
-        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Class 0 vs Rest')
-        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Class 1 vs Rest')
-        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Class 2 vs Rest')
+        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='High')
+        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Low')
+        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Medium')
+        ax.legend()
         st.pyplot(fig)
 
 
     else:
         gnb = GaussianNB()
-        gnb.fit(X_train, y_train)
+        gnb.fit(X_smt, y_smt)
 
         accuracy = gnb.score(X_test, y_test)
         f1 = f1_score(y_test, gnb.predict(X_test), average='weighted')
@@ -257,7 +259,7 @@ def app():
         y_pred = gnb.predict(X_test)
 
         # plot confusion matrix with plotly
-        cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Medium', 'Low'], y=['True High', 'True Medium', 'True Low'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
+        cf = ff.create_annotated_heatmap(z=confusion_matrix(y_test, y_pred).T, x=['High', 'Low', 'Medium'], y=['True High', 'True Low', 'True Medium'], annotation_text=confusion_matrix(y_test, y_pred).T, colorscale='Viridis', showscale=True)
         st.plotly_chart(cf)
 
         clf = OneVsRestClassifier(gnb)
@@ -276,9 +278,10 @@ def app():
 
         fig, ax = plt.subplots(figsize=(5, 5))
 
-        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Class 0 vs Rest')
-        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Class 1 vs Rest')
-        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Class 2 vs Rest')
+        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='High')
+        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Low')
+        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Medium')
+        ax.legend()
         st.pyplot(fig)
 
 
@@ -352,10 +355,11 @@ def app():
 
         fig, ax = plt.subplots(figsize=(5, 5))
 
-        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Pfizer')
-        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Sinovac')
-        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Astrazeneca')
-        ax.plot(fpr[3], tpr[3], linestyle='--',color='red', label='Cansino')
+        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Astrazeneca')
+        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Cansino')
+        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Pfizer')
+        ax.plot(fpr[3], tpr[3], linestyle='--',color='red', label='Sinovac')
+        ax.legend()
         st.pyplot(fig)
 
     elif classification_model2 == 'Support Vector Classification':
@@ -394,8 +398,9 @@ def app():
 
         fig, ax = plt.subplots(figsize=(5, 5))
 
-        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Pfizer')
-        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Sinovac')
-        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Astrazeneca')
-        ax.plot(fpr[3], tpr[3], linestyle='--',color='red', label='Cansino')
+        ax.plot(fpr[0], tpr[0], linestyle='--',color='orange', label='Astrazeneca')
+        ax.plot(fpr[1], tpr[1], linestyle='--',color='green', label='Cansino')
+        ax.plot(fpr[2], tpr[2], linestyle='--',color='blue', label='Pfizer')
+        ax.plot(fpr[3], tpr[3], linestyle='--',color='red', label='Sinovac')
+        ax.legend()
         st.pyplot(fig)
